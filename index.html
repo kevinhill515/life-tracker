@@ -5,7 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <meta name="theme-color" content="#faf6f0" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Life" />
+<link rel="icon" type="image/svg+xml" href="icon.svg" />
+<link rel="apple-touch-icon" href="icon.svg" />
+<link rel="manifest" href="manifest.webmanifest" />
 <title>Life Tracker</title>
 <style>
   :root {
@@ -24,8 +29,35 @@
     --done-soft: #d5e2c4;
     --partial: #d9b380;
     --partial-soft: #f0dfc4;
+    --error: #a04040;
+    --modal-bg: rgba(60, 40, 23, 0.4);
+    --on-accent: #fffaf2;
     --shadow: 0 1px 2px rgba(60, 40, 23, 0.05);
     --shadow-md: 0 2px 8px rgba(60, 40, 23, 0.08);
+    color-scheme: light;
+  }
+  [data-theme="dark"] {
+    --bg: #1a1410;
+    --card: #241c14;
+    --card-soft: #2e2418;
+    --border: #3a2d20;
+    --border-strong: #4d3c2a;
+    --text: #f4ebd9;
+    --text-soft: #c8b89a;
+    --muted: #8a7a62;
+    --accent: #d4a574;
+    --accent-deep: #e0b585;
+    --accent-soft: #3a2c1d;
+    --done: #a8c485;
+    --done-soft: #2d3621;
+    --partial: #d9b380;
+    --partial-soft: #3a2c1d;
+    --error: #e89a9a;
+    --modal-bg: rgba(0, 0, 0, 0.65);
+    --on-accent: #1a1410;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.5);
+    color-scheme: dark;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
@@ -109,10 +141,10 @@
   .btn:active { transform: scale(0.98); background: var(--accent-soft); }
   .btn-primary {
     background: var(--accent-deep);
-    color: #fffaf2;
+    color: var(--on-accent);
     border-color: var(--accent-deep);
   }
-  .btn-primary:active { background: #8a5a32; }
+  .btn-primary:active { background: var(--accent); }
   .btn-ghost { background: transparent; border-color: transparent; color: var(--text-soft); }
   .btn-icon {
     width: 36px; height: 36px; padding: 0; border-radius: 10px;
@@ -174,32 +206,43 @@
     box-shadow: 0 0 0 3px var(--accent-soft);
   }
 
-  /* Habit grid */
+  /* Habit grid (two-row layout: name on top, day cells below) */
   .grid {
-    display: grid;
-    gap: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
   }
-  .habit-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) repeat(7, 36px) 44px;
+  .habit-block {
+    display: flex;
+    flex-direction: column;
     gap: 4px;
-    align-items: center;
   }
-  .habit-row .label {
-    font-size: 13px;
+  .habit-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
     color: var(--text);
-    margin: 0;
     font-weight: 500;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  }
+  .habit-name .ico { font-size: 18px; line-height: 1; flex-shrink: 0; }
+  .habit-name .nm  { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .habit-name .tot {
+    color: var(--text-soft);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+  }
+  .habit-cells {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
   }
   .habit-day-headers {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) repeat(7, 36px) 44px;
+    grid-template-columns: repeat(7, 1fr);
     gap: 4px;
-    margin-bottom: 6px;
-    padding-left: 0;
+    margin-bottom: 8px;
   }
   .habit-day-headers > div {
     text-align: center;
@@ -209,13 +252,10 @@
     text-transform: uppercase;
     letter-spacing: 0.04em;
   }
-  .habit-day-headers > div:first-child { text-align: left; }
-  .habit-row .total {
-    text-align: right;
-    font-size: 13px;
-    color: var(--text-soft);
-    font-weight: 500;
-    font-variant-numeric: tabular-nums;
+  .habit-cells .habit-cell {
+    width: 100%;
+    height: 38px;
+    border-radius: 10px;
   }
 
   /* Tab bar */
@@ -226,7 +266,7 @@
     transform: translateX(-50%);
     width: 100%;
     max-width: 640px;
-    background: rgba(255, 253, 248, 0.95);
+    background: color-mix(in srgb, var(--card) 92%, transparent);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border-top: 1px solid var(--border);
@@ -332,7 +372,7 @@
   }
   .pill.active {
     background: var(--accent-deep);
-    color: #fffaf2;
+    color: var(--on-accent);
     border-color: var(--accent-deep);
   }
 
@@ -355,7 +395,7 @@
   .scale button.sel {
     background: var(--accent-deep);
     border-color: var(--accent-deep);
-    color: #fffaf2;
+    color: var(--on-accent);
   }
 
   /* Misc */
@@ -402,7 +442,7 @@
   /* Modal */
   .modal-bg {
     position: fixed; inset: 0;
-    background: rgba(60, 40, 23, 0.4);
+    background: var(--modal-bg);
     z-index: 100;
     display: flex;
     align-items: flex-end;
@@ -449,7 +489,7 @@
   .today-habit {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 8px;
     padding: 10px 12px;
     background: var(--card-soft);
     border: 1px solid var(--border);
@@ -458,6 +498,8 @@
     color: var(--text);
     font-weight: 500;
   }
+  .today-habit .ico { font-size: 16px; line-height: 1; flex-shrink: 0; }
+  .today-habit .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .today-habit.done {
     background: var(--done-soft);
     border-color: var(--done);
@@ -547,6 +589,39 @@
     color: var(--accent-deep);
   }
 
+  /* Theme toggle */
+  .theme-toggle {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: var(--card-soft);
+    border: 1px solid var(--border);
+    color: var(--text-soft);
+    font-size: 14px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Trends sparkline rows */
+  .trend-row {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr) 90px 24px 36px;
+    gap: 8px;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .trend-row:last-child { border-bottom: none; }
+  .trend-row .ico { font-size: 16px; text-align: center; line-height: 1; }
+  .trend-row .nm  { font-size: 13px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .trend-row .arrow { text-align: center; font-size: 14px; font-weight: 600; }
+  .trend-row .arrow.up   { color: var(--done); }
+  .trend-row .arrow.flat { color: var(--muted); }
+  .trend-row .arrow.down { color: var(--accent-deep); }
+  .trend-row .avg { text-align: right; font-size: 13px; color: var(--text-soft); font-variant-numeric: tabular-nums; }
+  .spark { width: 100%; height: 26px; display: block; }
+
   /* Keep tappable */
   @media (hover: none) {
     .btn:hover { background: var(--card-soft); }
@@ -617,6 +692,32 @@ const HABITS = [
   "Rope Flow", "Ocean", "Reading", "Creating", "Spanish",
   "Spiritual Lessons", "Friends", "Family"
 ];
+
+const HABIT_ICONS = {
+  "Stretch/Mobility":  "🧘",
+  "Strength":          "💪",
+  "Cardio":            "🏃",
+  "Sauna":             "🔥",
+  "Float":             "💧",
+  "Rope Flow":         "🪢",
+  "Ocean":             "🌊",
+  "Reading":           "📖",
+  "Creating":          "🎨",
+  "Spanish":           "🗣",
+  "Spiritual Lessons": "✨",
+  "Friends":           "👥",
+  "Family":            "🏡"
+};
+
+const THEME_KEY = "lt-theme-v1";
+function getInitialTheme() {
+  try {
+    const saved = localStorage.getItem(THEME_KEY);
+    if (saved === "dark" || saved === "light") return saved;
+  } catch {}
+  return (typeof window !== "undefined" && window.matchMedia &&
+          window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
+}
 
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -870,20 +971,37 @@ function habitWeekBreakdown(state, weekKey, habit) {
    APP
    ====================================================================== */
 
+function useTheme() {
+  const [theme, setTheme] = useState(getInitialTheme);
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    try { localStorage.setItem(THEME_KEY, theme); } catch {}
+    // also update the theme-color meta so the iOS status bar matches
+    const tc = theme === "dark" ? "#1a1410" : "#faf6f0";
+    let m = document.querySelector('meta[name="theme-color"]');
+    if (m) m.setAttribute("content", tc);
+  }, [theme]);
+  const toggle = () => setTheme(t => t === "dark" ? "light" : "dark");
+  return { theme, toggle };
+}
+
 function App() {
-  if (!CONFIG_OK) return html`<${SetupNeeded} />`;
+  const { theme, toggle: toggleTheme } = useTheme();
+  const themeProps = { theme, toggleTheme };
+
+  if (!CONFIG_OK) return html`<${SetupNeeded} ...${themeProps} />`;
 
   const { session, authLoading } = useAuth();
 
   if (authLoading) {
     return html`<div class="scroll center" style="padding-top:60px"><p class="muted">Loading…</p></div>`;
   }
-  if (!session) return html`<${SignIn} />`;
+  if (!session) return html`<${SignIn} ...${themeProps} />`;
 
-  return html`<${SignedInApp} session=${session} />`;
+  return html`<${SignedInApp} session=${session} ...${themeProps} />`;
 }
 
-function SignedInApp({ session }) {
+function SignedInApp({ session, theme, toggleTheme }) {
   const [state, setState] = useState(loadState);
   const [tab, setTab] = useState("today");
   const [hydrated, setHydrated] = useState(false);
@@ -979,7 +1097,7 @@ function SignedInApp({ session }) {
   const ctx = { state, patch, today, todayWeek, todayWeekKey, session, syncStatus };
 
   return html`
-    <${Header} today=${today} tab=${tab} session=${session} syncStatus=${syncStatus} />
+    <${Header} today=${today} tab=${tab} session=${session} syncStatus=${syncStatus} theme=${theme} toggleTheme=${toggleTheme} />
     <div class="scroll">
       ${tab === "today"   && html`<${TodayView}    ...${ctx} />`}
       ${tab === "habits"  && html`<${HabitsView}   ...${ctx} />`}
@@ -1119,7 +1237,7 @@ function SignIn() {
             onInput=${e => setPassword(e.target.value)}
           />
         </div>
-        ${err && html`<p class="small" style="color:#a04040;margin-bottom:10px">${err}</p>`}
+        ${err && html`<p class="small" style="color:var(--error);margin-bottom:10px">${err}</p>`}
         ${info && html`<p class="small" style="color:var(--accent-deep);margin-bottom:10px">${info}</p>`}
         <button class="btn btn-primary btn-block" disabled=${busy} type="submit">
           ${busy ? "…" : (mode === "signin" ? "Sign in" : "Sign up")}
@@ -1143,7 +1261,7 @@ function SignIn() {
    HEADER
    ====================================================================== */
 
-function Header({ today, tab, session, syncStatus }) {
+function Header({ today, tab, session, syncStatus, theme, toggleTheme }) {
   const tabName = TABS.find(t => t.id === tab)?.label || "";
   const statusLabel = {
     idle: "",
@@ -1151,7 +1269,7 @@ function Header({ today, tab, session, syncStatus }) {
     saved: "Saved",
     offline: "Offline"
   }[syncStatus] || "";
-  const statusColor = syncStatus === "offline" ? "#a04040"
+  const statusColor = syncStatus === "offline" ? "var(--error)"
                     : syncStatus === "saved"   ? "var(--done)"
                     : "var(--muted)";
   return html`
@@ -1161,20 +1279,30 @@ function Header({ today, tab, session, syncStatus }) {
           <div class="date">${fmtDate(today)}</div>
           <div class="title">${tabName}</div>
         </div>
-        ${session && html`
-          <div class="stack-tight" style="align-items:flex-end">
-            <span class="tiny" style=${`color:${statusColor};min-height:14px`}>${statusLabel}</span>
+        <div class="row" style="gap:8px;align-items:flex-start">
+          ${toggleTheme && html`
             <button
-              class="btn btn-ghost"
-              style="font-size:11px;padding:4px 8px"
-              onClick=${async () => {
-                if (confirm("Sign out? Your data stays in the cloud.")) {
-                  await supabase.auth.signOut();
-                }
-              }}
-            >Sign out</button>
-          </div>
-        `}
+              class="theme-toggle"
+              onClick=${toggleTheme}
+              aria-label="Toggle theme"
+              title=${theme === "dark" ? "Switch to light" : "Switch to dark"}
+            >${theme === "dark" ? "☀" : "☾"}</button>
+          `}
+          ${session && html`
+            <div class="stack-tight" style="align-items:flex-end">
+              <span class="tiny" style=${`color:${statusColor};min-height:14px`}>${statusLabel}</span>
+              <button
+                class="btn btn-ghost"
+                style="font-size:11px;padding:4px 8px"
+                onClick=${async () => {
+                  if (confirm("Sign out? Your data stays in the cloud.")) {
+                    await supabase.auth.signOut();
+                  }
+                }}
+              >Sign out</button>
+            </div>
+          `}
+        </div>
       </div>
     </header>
   `;
@@ -1260,7 +1388,8 @@ function TodayView({ state, patch, today, todayWeek, todayWeekKey }) {
           const mark = v === 1 ? "✓" : v === 0.5 ? "½" : "";
           return html`
             <button key=${h} class="today-habit ${cls}" onClick=${() => cycleHabit(h)}>
-              <span>${h}</span>
+              <span class="ico">${HABIT_ICONS[h] || ""}</span>
+              <span class="name">${h}</span>
               <span class="mark">${mark}</span>
             </button>
           `;
@@ -1459,7 +1588,7 @@ function EveningCheckIn({ checkin, setField }) {
 
 function HabitsView({ state, patch, today, todayWeek }) {
   const [weekStart, setWeekStart] = useState(todayWeek);
-  const [compareHabit, setCompareHabit] = useState(null);
+  const [showTrends, setShowTrends] = useState(false);
   const wk = isoWeekKey(addDays(weekStart, 3)); // pick Thu to be safely inside ISO week
   const days = weekDates(weekStart);
   const todayKey = dayKey(today);
@@ -1476,91 +1605,139 @@ function HabitsView({ state, patch, today, todayWeek }) {
 
     <div class="card">
       <div class="habit-day-headers">
-        <div></div>
         ${DAY_LABELS.map((d, i) => html`<div key=${i}>${d[0]}</div>`)}
-        <div style="text-align:right">Σ</div>
       </div>
       <div class="grid">
         ${HABITS.map(h => {
           const total = habitWeekTotal(state, wk, h);
           return html`
-            <div class="habit-row" key=${h}>
-              <div class="label">${h}</div>
-              ${days.map((d, i) => {
-                const v = getHabitValue(state, wk, h, i);
-                const cls = v === 1 ? "done" : v === 0.5 ? "partial" : "";
-                const isToday = dayKey(d) === todayKey;
-                const mark = v === 1 ? "✓" : v === 0.5 ? "½" : "";
-                return html`
-                  <button
-                    key=${i}
-                    class="habit-cell ${cls} ${isToday ? "today" : ""}"
-                    onClick=${() => patch(s => setHabitValue(s, wk, h, i, cycleHabitValue(v)))}
-                  >${mark}</button>
-                `;
-              })}
-              <div class="total">${total}</div>
+            <div class="habit-block" key=${h}>
+              <div class="habit-name">
+                <span class="ico">${HABIT_ICONS[h] || ""}</span>
+                <span class="nm">${h}</span>
+                <span class="tot">${total}</span>
+              </div>
+              <div class="habit-cells">
+                ${days.map((d, i) => {
+                  const v = getHabitValue(state, wk, h, i);
+                  const cls = v === 1 ? "done" : v === 0.5 ? "partial" : "";
+                  const isToday = dayKey(d) === todayKey;
+                  const mark = v === 1 ? "✓" : v === 0.5 ? "½" : "";
+                  return html`
+                    <button
+                      key=${i}
+                      class="habit-cell ${cls} ${isToday ? "today" : ""}"
+                      onClick=${() => patch(s => setHabitValue(s, wk, h, i, cycleHabitValue(v)))}
+                    >${mark}</button>
+                  `;
+                })}
+              </div>
             </div>
           `;
         })}
       </div>
     </div>
 
-    <button class="btn btn-block" onClick=${() => setCompareHabit(HABITS[0])}>
-      Compare a habit across weeks
+    <button class="btn btn-block" onClick=${() => setShowTrends(true)}>
+      View all habit trends
     </button>
 
-    ${compareHabit && html`
-      <${CompareModal}
-        state=${state}
-        habit=${compareHabit}
-        setHabit=${setCompareHabit}
-        onClose=${() => setCompareHabit(null)}
-      />
-    `}
+    ${showTrends && html`<${TrendsModal} state=${state} onClose=${() => setShowTrends(false)} />`}
   `;
 }
 
-/* Compare habit across weeks */
-function CompareModal({ state, habit, setHabit, onClose }) {
-  // gather all weeks that have any data
+/* All-habit trends — sparkline per habit, with up/sideways/down indicator */
+function TrendsModal({ state, onClose }) {
+  const [windowSize, setWindowSize] = useState(8); // weeks to show
   const allWeeks = Object.keys(state.habits).sort();
-  const last = allWeeks.slice(-12); // last 12 weeks max
-  const max = 7; // max possible weekly total
+  const weeks = allWeeks.slice(-windowSize);
+  const hasData = weeks.length >= 2;
 
   return html`
     <div class="modal-bg" onClick=${onClose}>
       <div class="modal" onClick=${e => e.stopPropagation()}>
         <div class="modal-header">
-          <h2>Compare across weeks</h2>
+          <h2>Habit trends</h2>
           <button class="btn btn-ghost btn-icon" onClick=${onClose}>✕</button>
         </div>
 
-        <div class="field">
-          <label class="label">Habit</label>
-          <select class="select" value=${habit} onChange=${e => setHabit(e.target.value)}>
-            ${HABITS.map(h => html`<option key=${h} value=${h}>${h}</option>`)}
-          </select>
+        <div class="row" style="gap:6px;margin-bottom:12px">
+          ${[4, 8, 12, 26].map(n => html`
+            <button
+              key=${n}
+              class="pill ${windowSize === n ? "active" : ""}"
+              onClick=${() => setWindowSize(n)}
+            >${n}w</button>
+          `)}
         </div>
 
-        ${last.length === 0 ? html`<p class="empty">No data yet — tracking starts when you tick a habit.</p>` : html`
-          <div style="margin-top:8px">
-            ${last.map(wk => {
-              const { total, full, partial } = habitWeekBreakdown(state, wk, habit);
-              const pct = (total / max) * 100;
+        ${!hasData ? html`
+          <p class="empty">Need at least 2 weeks of data to show trends.</p>
+        ` : html`
+          <div>
+            ${HABITS.map(h => {
+              const totals = weeks.map(wk => habitWeekTotal(state, wk, h));
+              const trend = computeTrend(totals);
+              const avg = totals.reduce((a, b) => a + b, 0) / totals.length;
               return html`
-                <div class="bar-row" key=${wk}>
-                  <div class="lbl">${wk}</div>
-                  <div class="bar-track"><div class="bar-fill" style=${`width:${pct}%`}></div></div>
-                  <div class="val">${total}</div>
+                <div class="trend-row" key=${h}>
+                  <div class="ico">${HABIT_ICONS[h] || ""}</div>
+                  <div class="nm">${h}</div>
+                  <${Sparkline} values=${totals} max=${7} />
+                  <div class="arrow ${trend.cls}">${trend.arrow}</div>
+                  <div class="avg">${avg.toFixed(1)}</div>
                 </div>
               `;
             })}
-            <p class="tiny" style="margin-top:8px">Up to 7 per week. Partials count as 0.5.</p>
+            <p class="tiny" style="margin-top:10px">
+              Sparkline = weekly totals (max 7). Arrow = linear trend over the window.
+              Avg = mean weekly total.
+            </p>
           </div>
         `}
       </div>
     </div>
+  `;
+}
+
+function computeTrend(values) {
+  // Simple linear-regression slope. Threshold ±0.15/wk for up/down.
+  const n = values.length;
+  if (n < 2) return { arrow: "→", cls: "flat" };
+  const meanX = (n - 1) / 2;
+  const meanY = values.reduce((a, b) => a + b, 0) / n;
+  let num = 0, den = 0;
+  for (let i = 0; i < n; i++) {
+    num += (i - meanX) * (values[i] - meanY);
+    den += (i - meanX) ** 2;
+  }
+  const slope = den === 0 ? 0 : num / den;
+  if (slope >  0.15) return { arrow: "↗", cls: "up" };
+  if (slope < -0.15) return { arrow: "↘", cls: "down" };
+  return { arrow: "→", cls: "flat" };
+}
+
+function Sparkline({ values, max = 7 }) {
+  const w = 90, h = 26, pad = 2;
+  const n = values.length;
+  if (n < 2) {
+    return html`<svg class="spark" viewBox=${`0 0 ${w} ${h}`}></svg>`;
+  }
+  const innerW = w - pad * 2;
+  const innerH = h - pad * 2;
+  const xs = (i) => pad + (i / (n - 1)) * innerW;
+  const ys = (v) => pad + innerH - (Math.min(v, max) / max) * innerH;
+  const points = values.map((v, i) => `${xs(i).toFixed(1)},${ys(v).toFixed(1)}`).join(" ");
+  const lastX = xs(n - 1);
+  const lastY = ys(values[n - 1]);
+  // shaded area under line
+  const areaPts = `${pad},${h - pad} ${points} ${(w - pad)},${h - pad}`;
+  return html`
+    <svg class="spark" viewBox=${`0 0 ${w} ${h}`} preserveAspectRatio="none">
+      <polygon points=${areaPts} fill="var(--accent-soft)" />
+      <polyline points=${points} fill="none" stroke="var(--accent-deep)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+      <circle cx=${lastX} cy=${lastY} r="2" fill="var(--accent-deep)" />
+    </svg>
   `;
 }
 
@@ -1835,9 +2012,11 @@ function PlansView({ state, patch, today, todayWeek, todayWeekKey }) {
       <p class="small" style="color:var(--text-soft);margin-bottom:10px">Set these on Sunday. They surface as gentle reminders on Tuesday and Thursday.</p>
       <div class="stack">
         ${[0, 1, 2].map(i => html`
-          <input
+          <textarea
             key=${i}
-            class="input"
+            class="textarea"
+            rows="3"
+            style="min-height:72px"
             placeholder=${`Intention ${i + 1}`}
             value=${weekly[i] || ""}
             onInput=${e => setWeekly(i, e.target.value)}
@@ -1909,21 +2088,6 @@ function ReviewView({ state, patch, today, todayWeek, todayWeekKey }) {
     habit: h,
     ...habitWeekBreakdown(state, wk, h)
   }));
-
-  // Build exportable summary
-  const summary = useMemo(() => buildSummary({
-    weekKey: wk,
-    weekStart,
-    state,
-    days,
-    habitTotals,
-    weekly,
-    intentionChecks,
-    gk,
-    startPhase,
-    endPhase,
-    review
-  }), [state, wk]);
 
   const [showExport, setShowExport] = useState(false);
 
@@ -2037,11 +2201,16 @@ function ReviewView({ state, patch, today, todayWeek, todayWeekKey }) {
     `}
 
     <button class="btn btn-primary btn-block" onClick=${() => setShowExport(true)}>
-      View / export summary
+      Export summary
     </button>
 
     ${showExport && html`
-      <${ExportModal} summary=${summary} onClose=${() => setShowExport(false)} />
+      <${ExportModal}
+        state=${state}
+        defaultStart=${weekStart}
+        defaultEnd=${isThisWeek ? today : addDays(weekStart, 6)}
+        onClose=${() => setShowExport(false)}
+      />
     `}
   `;
 }
@@ -2050,31 +2219,90 @@ function ReviewView({ state, patch, today, todayWeek, todayWeekKey }) {
    EXPORT MODAL
    ====================================================================== */
 
-function ExportModal({ summary, onClose }) {
+function parseISODate(s) {
+  if (!s) return null;
+  const [y, m, d] = s.split("-").map(n => parseInt(n, 10));
+  if (!y || !m || !d) return null;
+  const dt = new Date(y, m - 1, d);
+  dt.setHours(0, 0, 0, 0);
+  return dt;
+}
+
+function ExportModal({ state, defaultStart, defaultEnd, onClose }) {
+  const [start, setStart] = useState(dayKey(defaultStart));
+  const [end,   setEnd]   = useState(dayKey(defaultEnd));
   const [copied, setCopied] = useState(false);
+
+  const startDate = parseISODate(start);
+  const endDate   = parseISODate(end);
+  const valid = startDate && endDate && startDate <= endDate;
+
+  const summary = useMemo(() => {
+    if (!valid) return "Pick a valid range — start must be on or before end.";
+    return buildRangeSummary(state, startDate, endDate);
+  }, [state, start, end]);
+
+  const setQuick = (preset) => {
+    const t = startOfDay(new Date());
+    if (preset === "week") {
+      setStart(dayKey(startOfWeek(t)));
+      setEnd(dayKey(t));
+    } else if (preset === "4w") {
+      setStart(dayKey(addDays(t, -27)));
+      setEnd(dayKey(t));
+    } else if (preset === "12w") {
+      setStart(dayKey(addDays(t, -83)));
+      setEnd(dayKey(t));
+    } else if (preset === "month") {
+      const d = new Date(t); d.setDate(1);
+      setStart(dayKey(d));
+      setEnd(dayKey(t));
+    } else if (preset === "year") {
+      const d = new Date(t); d.setMonth(0, 1);
+      setStart(dayKey(d));
+      setEnd(dayKey(t));
+    } else if (preset === "all") {
+      const allKeys = [
+        ...Object.keys(state.checkins || {}),
+        ...Object.keys(state.moonNotes || {}),
+        ...Object.keys(state.intentions?.daily || {})
+      ];
+      // Also pull earliest day from any habit week-start
+      for (const wk of Object.keys(state.habits || {})) {
+        const m = wk.match(/^(\d{4})-W(\d{2})$/);
+        if (m) {
+          const yr = parseInt(m[1]); const w = parseInt(m[2]);
+          const jan4 = new Date(yr, 0, 4);
+          const target = addDays(startOfWeek(jan4), (w - 1) * 7);
+          allKeys.push(dayKey(target));
+        }
+      }
+      const earliest = allKeys.length ? allKeys.sort()[0] : dayKey(startOfWeek(t));
+      setStart(earliest);
+      setEnd(dayKey(t));
+    }
+  };
+
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(summary);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
     } catch {
-      // fallback
       const ta = document.createElement("textarea");
       ta.value = summary;
       document.body.appendChild(ta);
       ta.select();
-      document.execCommand("copy");
+      try { document.execCommand("copy"); } catch {}
       document.body.removeChild(ta);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
     }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
   };
   const download = () => {
     const blob = new Blob([summary], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `weekly-review-${new Date().toISOString().slice(0,10)}.md`;
+    a.download = `life-tracker-${start}_to_${end}.md`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -2085,13 +2313,34 @@ function ExportModal({ summary, onClose }) {
     <div class="modal-bg" onClick=${onClose}>
       <div class="modal" onClick=${e => e.stopPropagation()}>
         <div class="modal-header">
-          <h2>Weekly summary</h2>
+          <h2>Export</h2>
           <button class="btn btn-ghost btn-icon" onClick=${onClose}>✕</button>
         </div>
+
+        <div class="row" style="gap:6px;flex-wrap:wrap;margin-bottom:10px">
+          <button class="pill" onClick=${() => setQuick("week")}>This week</button>
+          <button class="pill" onClick=${() => setQuick("4w")}>4 weeks</button>
+          <button class="pill" onClick=${() => setQuick("12w")}>12 weeks</button>
+          <button class="pill" onClick=${() => setQuick("month")}>This month</button>
+          <button class="pill" onClick=${() => setQuick("year")}>This year</button>
+          <button class="pill" onClick=${() => setQuick("all")}>All time</button>
+        </div>
+
+        <div class="row" style="gap:8px;margin-bottom:12px">
+          <div style="flex:1">
+            <label class="label">From</label>
+            <input class="input" type="date" value=${start} onInput=${e => setStart(e.target.value)} />
+          </div>
+          <div style="flex:1">
+            <label class="label">To</label>
+            <input class="input" type="date" value=${end} onInput=${e => setEnd(e.target.value)} />
+          </div>
+        </div>
+
         <pre class="export">${summary}</pre>
         <div class="row" style="margin-top:12px;gap:8px">
-          <button class="btn btn-primary" style="flex:1" onClick=${copy}>${copied ? "Copied" : "Copy"}</button>
-          <button class="btn" style="flex:1" onClick=${download}>Download .md</button>
+          <button class="btn btn-primary" style="flex:1" onClick=${copy} disabled=${!valid}>${copied ? "Copied" : "Copy"}</button>
+          <button class="btn" style="flex:1" onClick=${download} disabled=${!valid}>Download .md</button>
         </div>
       </div>
     </div>
@@ -2099,89 +2348,122 @@ function ExportModal({ summary, onClose }) {
 }
 
 /* ======================================================================
-   SUMMARY BUILDER
+   RANGE SUMMARY BUILDER
    ====================================================================== */
 
-function buildSummary({ weekKey, weekStart, state, days, habitTotals, weekly, intentionChecks, gk, startPhase, endPhase, review }) {
+function buildRangeSummary(state, startDate, endDate) {
   const lines = [];
-  lines.push(`# Weekly Review · ${weekKey}`);
-  lines.push(`${fmtWeekRange(weekStart)}`);
+  lines.push(`# Life Tracker · ${fmtShort(startDate)} – ${fmtShort(endDate)}`);
+  const dayCount = Math.round((endDate - startDate) / 86400000) + 1;
+  lines.push(`${dayCount} day${dayCount === 1 ? "" : "s"}`);
   lines.push("");
 
-  lines.push("## Habits");
-  for (const { habit, full, partial, total } of habitTotals) {
-    lines.push(`- ${habit}: ${total} (${full} full + ${partial} half)`);
-  }
-  lines.push("");
-
-  lines.push("## Weekly intentions");
-  if (weekly.some(Boolean)) {
-    weekly.forEach((it, i) => {
-      const mark = intentionChecks[i] ? "[x]" : "[ ]";
-      lines.push(`- ${mark} ${it || "(unset)"}`);
-    });
-  } else {
-    lines.push("- (none set)");
-  }
-  lines.push("");
-
-  if (gk && gk.number) {
-    lines.push(`## Gene Key ${gk.number}`);
-    lines.push(`- Shadow: ${gk.shadow || "—"}`);
-    lines.push(`- Gift: ${gk.gift || "—"}`);
-    lines.push(`- Siddhi: ${gk.siddhi || "—"}`);
-    const logs = Object.entries(gk.logs || {}).filter(([_, v]) => v && v.trim()).sort();
-    if (logs.length) {
-      lines.push("");
-      lines.push("### Daily logs");
-      for (const [k, v] of logs) {
-        lines.push(`- **${fmtDate(new Date(k + "T12:00:00"), { weekday: "short" })}:** ${v}`);
-      }
-    }
-    if (review.geneKeyReflection) {
-      lines.push("");
-      lines.push("### Reflection");
-      lines.push(review.geneKeyReflection);
-    }
-    lines.push("");
+  // Collect days in range (inclusive)
+  const days = [];
+  for (let d = new Date(startDate); d <= endDate; d = addDays(d, 1)) {
+    days.push(new Date(d));
   }
 
-  lines.push("## Moon");
-  if (startPhase.name === endPhase.name) {
-    lines.push(`- ${startPhase.emoji} ${startPhase.name} — ${startPhase.theme}`);
-  } else {
-    lines.push(`- Start: ${startPhase.emoji} ${startPhase.name} (${startPhase.theme})`);
-    lines.push(`- End: ${endPhase.emoji} ${endPhase.name} (${endPhase.theme})`);
-  }
-  lines.push("");
+  // Collect ISO weeks touched by range
+  const weekSet = new Set();
+  for (const d of days) weekSet.add(isoWeekKey(d));
+  const weekKeys = [...weekSet].sort();
 
-  // Daily check-in highlights
-  const checkinDays = days
-    .map(d => ({ d, c: state.checkins[dayKey(d)] }))
-    .filter(({ c }) => c && Object.values(c).some(v => v && (typeof v === "string" ? v.trim() : true)));
-
-  if (checkinDays.length) {
-    lines.push("## Daily highlights");
-    for (const { d, c } of checkinDays) {
-      lines.push(`### ${fmtDate(d, { weekday: "long", month: "short", day: "numeric" })}`);
-      if (c.wellbeing) lines.push(`- Wellbeing: ${c.wellbeing}/10${c.wellbeingWhy ? ` — ${c.wellbeingWhy}` : ""}`);
-      if (c.whatHappened) lines.push(`- What: ${c.whatHappened}`);
-      if (c.stillness) lines.push(`- Stillness: ${c.stillness}`);
-      if (c.visibility) lines.push(`- Visibility: ${c.visibility}`);
-      if (c.connection) lines.push(`- Connection: ${c.connection}`);
-      if (c.bodyNotes) lines.push(`- Body: ${c.bodyNotes}`);
-      if (c.creative && c.creative.status) lines.push(`- Creative: ${c.creative.status}${c.creative.pulse ? ` — ${c.creative.pulse}` : ""}`);
-      if (c.gratitude && c.gratitude.some(Boolean)) {
-        lines.push(`- Grateful: ${c.gratitude.filter(Boolean).join("; ")}`);
+  // ============ Habits — totals by week ============
+  const habitWeeks = weekKeys.filter(wk => state.habits[wk]);
+  if (habitWeeks.length) {
+    lines.push("## Habits");
+    for (const wk of habitWeeks) {
+      const totals = HABITS
+        .map(h => ({ h, ...habitWeekBreakdown(state, wk, h) }))
+        .filter(({ total }) => total > 0);
+      if (!totals.length) continue;
+      lines.push(`### ${wk}`);
+      for (const { h, full, partial, total } of totals) {
+        lines.push(`- ${h}: ${total} (${full} full + ${partial} half)`);
       }
       lines.push("");
     }
   }
 
-  if (review.openReflection) {
-    lines.push("## Open reflection");
-    lines.push(review.openReflection);
-    lines.push("");
+  // ============ Weekly intentions, Gene Keys, reviews ============
+  const weekDataLines = [];
+  for (const wk of weekKeys) {
+    const weekly = state.intentions.weekly[wk];
+    const review = state.reviews[wk];
+    const gk = state.geneKeys[wk];
+    const hasContent = (weekly && weekly.some(Boolean)) || (gk && gk.number) || review;
+    if (!hasContent) continue;
+    weekDataLines.push(`### ${wk}`);
+    if (weekly && weekly.some(Boolean)) {
+      const checks = review?.intentionChecks || [];
+      weekDataLines.push("**Intentions:**");
+      weekly.forEach((it, i) => {
+        if (!it) return;
+        const mark = checks[i] ? "[x]" : "[ ]";
+        weekDataLines.push(`- ${mark} ${it}`);
+      });
+    }
+    if (gk && gk.number) {
+      weekDataLines.push("");
+      weekDataLines.push(`**Gene Key ${gk.number}:** Shadow ${gk.shadow || "—"} · Gift ${gk.gift || "—"} · Siddhi ${gk.siddhi || "—"}`);
+      if (review?.geneKeyReflection) {
+        weekDataLines.push(`**Gene Key reflection:** ${review.geneKeyReflection}`);
+      }
+    }
+    if (review?.openReflection) {
+      weekDataLines.push("");
+      weekDataLines.push(`**Open reflection:** ${review.openReflection}`);
+    }
+    weekDataLines.push("");
+  }
+  if (weekDataLines.length) {
+    lines.push("## Weeks");
+    lines.push(...weekDataLines);
+  }
+
+  // ============ Daily ============
+  const dailyLines = [];
+  for (const d of days) {
+    const dk = dayKey(d);
+    const c = state.checkins[dk];
+    const mn = state.moonNotes[dk];
+    const oneThing = state.intentions.daily?.[dk];
+    const wk = isoWeekKey(d);
+    const gkLog = state.geneKeys[wk]?.logs?.[dk];
+
+    const hasC = c && Object.values(c).some(v =>
+      v && (typeof v === "string" ? v.trim() : (Array.isArray(v) ? v.some(Boolean) : true))
+    );
+    if (!hasC && !mn && !oneThing && !gkLog) continue;
+
+    dailyLines.push(`### ${fmtDate(d, { weekday: "long", month: "short", day: "numeric", year: "numeric" })}`);
+    if (oneThing) dailyLines.push(`- One thing: ${oneThing}`);
+    if (c?.wellbeing) dailyLines.push(`- Wellbeing: ${c.wellbeing}/10${c.wellbeingWhy ? ` — ${c.wellbeingWhy}` : ""}`);
+    if (c?.whatHappened) dailyLines.push(`- What happened: ${c.whatHappened}`);
+    if (c?.stillness) dailyLines.push(`- Stillness: ${c.stillness}`);
+    if (c?.visibility) dailyLines.push(`- Visibility/connection: ${c.visibility}`);
+    if (c?.connection) dailyLines.push(`- Who I connected with: ${c.connection}`);
+    if (c?.bodyNotes) dailyLines.push(`- Body: ${c.bodyNotes}`);
+    if (c?.creative?.status) dailyLines.push(`- Creative: ${c.creative.status}${c.creative.pulse ? ` — ${c.creative.pulse}` : ""}`);
+    if (c?.gratitude && c.gratitude.some(Boolean)) {
+      dailyLines.push(`- Grateful: ${c.gratitude.filter(Boolean).join("; ")}`);
+    }
+    if (c?.tomorrowOneThing) dailyLines.push(`- Tomorrow's one thing: ${c.tomorrowOneThing}`);
+    if (gkLog) dailyLines.push(`- Gene Key noticing: ${gkLog}`);
+    if (mn) {
+      const phase = moonPhase(d);
+      dailyLines.push(`- Moon (${phase.emoji} ${phase.name}): ${mn}`);
+    }
+    dailyLines.push("");
+  }
+  if (dailyLines.length) {
+    lines.push("## Daily");
+    lines.push(...dailyLines);
+  }
+
+  if (lines.length <= 3) {
+    lines.push("_No data in this range._");
   }
 
   return lines.join("\n");

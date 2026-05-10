@@ -1,0 +1,19 @@
+{
+  "name": "Life Tracker",
+  "short_name": "Life",
+  "description": "Daily habits, moon cycles, intentions, and evening check-ins.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#c89968",
+  "background_color": "#faf6f0",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

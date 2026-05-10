@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#e6b87e"/>
+      <stop offset="55%" stop-color="#c89968"/>
+      <stop offset="100%" stop-color="#7a4f2a"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.32" cy="0.36" r="0.65">
+      <stop offset="0%" stop-color="rgba(255, 245, 227, 0.25)"/>
+      <stop offset="100%" stop-color="rgba(255, 245, 227, 0)"/>
+    </radialGradient>
+    <mask id="crescent">
+      <rect width="512" height="512" fill="black"/>
+      <circle cx="244" cy="252" r="146" fill="white"/>
+      <circle cx="298" cy="240" r="138" fill="black"/>
+    </mask>
+  </defs>
+
+  <!-- Full-bleed warm gradient (iOS rounds corners automatically) -->
+  <rect width="512" height="512" fill="url(#bg)"/>
+
+  <!-- Soft inner light -->
+  <rect width="512" height="512" fill="url(#glow)"/>
+
+  <!-- Cream crescent moon -->
+  <rect width="512" height="512" fill="#fff5e3" mask="url(#crescent)"/>
+
+  <!-- Three small stars suggesting weekly rhythm -->
+  <circle cx="395" cy="140" r="4" fill="#fff5e3" opacity="0.9"/>
+  <circle cx="425" cy="180" r="2.5" fill="#fff5e3" opacity="0.7"/>
+  <circle cx="370" cy="195" r="2" fill="#fff5e3" opacity="0.6"/>
+</svg>
