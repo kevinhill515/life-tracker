@@ -1,0 +1,2198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#faf6f0" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<title>Life Tracker</title>
+<style>
+  :root {
+    --bg: #faf6f0;
+    --card: #fffdf8;
+    --card-soft: #f5ede0;
+    --border: #e8dccd;
+    --border-strong: #d8c8b0;
+    --text: #3d2817;
+    --text-soft: #6b563f;
+    --muted: #9a8870;
+    --accent: #c89968;
+    --accent-deep: #a87445;
+    --accent-soft: #f0dfc4;
+    --done: #87a96b;
+    --done-soft: #d5e2c4;
+    --partial: #d9b380;
+    --partial-soft: #f0dfc4;
+    --shadow: 0 1px 2px rgba(60, 40, 23, 0.05);
+    --shadow-md: 0 2px 8px rgba(60, 40, 23, 0.08);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior-y: contain;
+  }
+  body {
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  #app { max-width: 640px; margin: 0 auto; }
+  button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+  input, textarea, select { font-family: inherit; color: inherit; font-size: 16px; }
+  textarea { resize: vertical; }
+  h1, h2, h3, h4 { margin: 0; font-weight: 600; letter-spacing: -0.01em; }
+  h1 { font-size: 22px; }
+  h2 { font-size: 18px; }
+  h3 { font-size: 15px; color: var(--text-soft); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+  p { margin: 0; }
+  a { color: var(--accent-deep); }
+
+  /* Layout */
+  .scroll {
+    padding: 16px 16px 100px;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+  .header {
+    padding: 20px 16px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .header .date {
+    font-size: 13px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .header .title {
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  /* Card */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: var(--shadow);
+  }
+  .card-tight { padding: 12px; }
+  .card-flat { box-shadow: none; }
+  .card h2 { margin-bottom: 12px; }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    background: var(--card-soft);
+    color: var(--text);
+    border: 1px solid var(--border);
+    transition: background 0.12s ease, transform 0.12s ease;
+  }
+  .btn:active { transform: scale(0.98); background: var(--accent-soft); }
+  .btn-primary {
+    background: var(--accent-deep);
+    color: #fffaf2;
+    border-color: var(--accent-deep);
+  }
+  .btn-primary:active { background: #8a5a32; }
+  .btn-ghost { background: transparent; border-color: transparent; color: var(--text-soft); }
+  .btn-icon {
+    width: 36px; height: 36px; padding: 0; border-radius: 10px;
+  }
+  .btn-block { display: flex; width: 100%; }
+
+  /* Inputs */
+  .input, .textarea, .select {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.12s ease;
+  }
+  .input:focus, .textarea:focus, .select:focus {
+    border-color: var(--accent);
+  }
+  .textarea { min-height: 70px; }
+  .label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-soft);
+    margin-bottom: 6px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+  .field { margin-bottom: 14px; }
+  .field:last-child { margin-bottom: 0; }
+
+  /* Habit cells */
+  .habit-cell {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 500;
+    border: 1.5px solid var(--border-strong);
+    background: var(--card);
+    color: var(--muted);
+    transition: all 0.12s ease;
+  }
+  .habit-cell:active { transform: scale(0.92); }
+  .habit-cell.done {
+    background: var(--done);
+    border-color: var(--done);
+    color: #fff;
+  }
+  .habit-cell.partial {
+    background: var(--partial);
+    border-color: var(--partial);
+    color: #fff;
+  }
+  .habit-cell.today {
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+
+  /* Habit grid */
+  .grid {
+    display: grid;
+    gap: 6px;
+  }
+  .habit-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) repeat(7, 36px) 44px;
+    gap: 4px;
+    align-items: center;
+  }
+  .habit-row .label {
+    font-size: 13px;
+    color: var(--text);
+    margin: 0;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .habit-day-headers {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) repeat(7, 36px) 44px;
+    gap: 4px;
+    margin-bottom: 6px;
+    padding-left: 0;
+  }
+  .habit-day-headers > div {
+    text-align: center;
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .habit-day-headers > div:first-child { text-align: left; }
+  .habit-row .total {
+    text-align: right;
+    font-size: 13px;
+    color: var(--text-soft);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Tab bar */
+  .tabbar {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 640px;
+    background: rgba(255, 253, 248, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-around;
+    padding: 6px 0 calc(6px + env(safe-area-inset-bottom));
+    z-index: 50;
+  }
+  .tab {
+    flex: 1;
+    padding: 8px 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    transition: color 0.12s ease;
+  }
+  .tab.active { color: var(--accent-deep); }
+  .tab .ic { font-size: 18px; line-height: 1; }
+
+  /* Banner / reminder */
+  .banner {
+    background: linear-gradient(135deg, #f5e6cd 0%, #f0dfc4 100%);
+    border: 1px solid var(--border-strong);
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+  .banner h3 { color: var(--accent-deep); margin-bottom: 6px; }
+  .banner ul { margin: 0; padding-left: 18px; font-size: 14px; color: var(--text-soft); }
+
+  /* Moon */
+  .moon-display {
+    text-align: center;
+    padding: 8px 0 16px;
+  }
+  .moon-emoji {
+    font-size: 96px;
+    line-height: 1;
+    filter: drop-shadow(0 2px 8px rgba(60, 40, 23, 0.15));
+    margin-bottom: 8px;
+  }
+  .moon-name {
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .moon-theme {
+    font-size: 14px;
+    color: var(--accent-deep);
+    font-style: italic;
+    margin-bottom: 8px;
+  }
+  .moon-meta {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  /* Gene Key */
+  .key-num {
+    font-size: 56px;
+    font-weight: 300;
+    color: var(--accent-deep);
+    letter-spacing: -0.04em;
+    line-height: 1;
+  }
+  .key-tier {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 12px;
+    background: var(--card-soft);
+    border-radius: 10px;
+    margin-bottom: 8px;
+  }
+  .key-tier-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .key-tier-value {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  /* Pills */
+  .pill {
+    display: inline-flex;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--card-soft);
+    color: var(--text-soft);
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid var(--border);
+  }
+  .pill.active {
+    background: var(--accent-deep);
+    color: #fffaf2;
+    border-color: var(--accent-deep);
+  }
+
+  /* Wellbeing scale */
+  .scale {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 4px;
+  }
+  .scale button {
+    aspect-ratio: 1;
+    border-radius: 8px;
+    background: var(--card-soft);
+    border: 1px solid var(--border);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-soft);
+    transition: all 0.12s ease;
+  }
+  .scale button.sel {
+    background: var(--accent-deep);
+    border-color: var(--accent-deep);
+    color: #fffaf2;
+  }
+
+  /* Misc */
+  .row { display: flex; align-items: center; gap: 8px; }
+  .row-between { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .stack { display: flex; flex-direction: column; gap: 8px; }
+  .stack-tight { display: flex; flex-direction: column; gap: 4px; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .small { font-size: 13px; }
+  .tiny { font-size: 11px; color: var(--muted); }
+  .center { text-align: center; }
+  .empty {
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    padding: 16px 8px;
+  }
+  .divider { height: 1px; background: var(--border); margin: 12px 0; }
+
+  /* Compare bar chart */
+  .bar-row {
+    display: grid;
+    grid-template-columns: 70px 1fr 36px;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 6px;
+    font-size: 13px;
+  }
+  .bar-track {
+    height: 12px;
+    background: var(--card-soft);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent) 0%, var(--accent-deep) 100%);
+    border-radius: 6px;
+    transition: width 0.3s ease;
+  }
+  .bar-row .lbl { color: var(--text-soft); font-variant-numeric: tabular-nums; font-size: 12px; }
+  .bar-row .val { color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; text-align: right; }
+
+  /* Modal */
+  .modal-bg {
+    position: fixed; inset: 0;
+    background: rgba(60, 40, 23, 0.4);
+    z-index: 100;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .modal {
+    background: var(--card);
+    border-radius: 18px 18px 0 0;
+    width: 100%;
+    max-width: 640px;
+    max-height: 80vh;
+    overflow-y: auto;
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+    box-shadow: 0 -4px 24px rgba(60, 40, 23, 0.15);
+  }
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+
+  /* Week nav */
+  .week-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .week-nav .label-wk {
+    text-align: center;
+    flex: 1;
+  }
+  .week-nav .label-wk .top { font-size: 13px; color: var(--muted); }
+  .week-nav .label-wk .bot { font-size: 16px; font-weight: 600; color: var(--text); }
+
+  /* Compact habit list (today) */
+  .today-habits {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .today-habit {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background: var(--card-soft);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 13px;
+    color: var(--text);
+    font-weight: 500;
+  }
+  .today-habit.done {
+    background: var(--done-soft);
+    border-color: var(--done);
+    color: var(--text);
+  }
+  .today-habit.partial {
+    background: var(--partial-soft);
+    border-color: var(--partial);
+  }
+  .today-habit .mark {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border-strong);
+    background: var(--card);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .today-habit.done .mark { background: var(--done); border-color: var(--done); }
+  .today-habit.partial .mark { background: var(--partial); border-color: var(--partial); }
+
+  /* Tomorrow's one thing card */
+  .one-thing {
+    background: linear-gradient(135deg, #fff5e3 0%, #f0dfc4 100%);
+    border: 1px solid var(--border-strong);
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+  .one-thing .lbl-top {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent-deep);
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .one-thing .text {
+    font-size: 17px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.4;
+  }
+
+  /* History list */
+  .history-item {
+    border-bottom: 1px solid var(--border);
+    padding: 12px 0;
+  }
+  .history-item:last-child { border-bottom: none; }
+
+  /* Export */
+  pre.export {
+    background: var(--card-soft);
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    font-size: 12px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-height: 50vh;
+    overflow-y: auto;
+    color: var(--text);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  /* Compare picker */
+  .week-pick {
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    font-size: 13px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .week-pick.sel {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent-deep);
+  }
+
+  /* Keep tappable */
+  @media (hover: none) {
+    .btn:hover { background: var(--card-soft); }
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script type="module">
+import { h, render, Fragment } from "https://esm.sh/preact@10.19.3";
+import { useState, useEffect, useMemo, useRef, useCallback } from "https://esm.sh/preact@10.19.3/hooks";
+import htm from "https://esm.sh/htm@3.1.1";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
+
+const html = htm.bind(h);
+
+/* ======================================================================
+   SUPABASE CONFIG  ←  fill these two in (see Setup screen for how)
+   ====================================================================== */
+
+const SUPABASE_URL = "https://ccutgnrcgertsszcbwlu.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_gu2VopK8NbkwW46uN4kxlw_DnkTUiLx";
+
+const CONFIG_OK =
+  SUPABASE_URL.startsWith("https://") &&
+  SUPABASE_ANON_KEY.length > 20 &&
+  !SUPABASE_URL.includes("YOUR_");
+
+const supabase = CONFIG_OK
+  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { persistSession: true, autoRefreshToken: true }
+    })
+  : null;
+
+const SUPABASE_SQL = `-- Run this in Supabase → SQL Editor, then click Run.
+
+create table if not exists public.user_state (
+  user_id    uuid primary key references auth.users(id) on delete cascade,
+  data       jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.user_state enable row level security;
+
+create policy "own state: read"
+  on public.user_state for select
+  using (auth.uid() = user_id);
+
+create policy "own state: insert"
+  on public.user_state for insert
+  with check (auth.uid() = user_id);
+
+create policy "own state: update"
+  on public.user_state for update
+  using (auth.uid() = user_id);
+
+-- Enable realtime so changes on one device push to the others.
+alter publication supabase_realtime add table public.user_state;
+`;
+
+/* ======================================================================
+   CONSTANTS
+   ====================================================================== */
+
+const HABITS = [
+  "Stretch/Mobility", "Strength", "Cardio", "Sauna", "Float",
+  "Rope Flow", "Ocean", "Reading", "Creating", "Spanish",
+  "Spiritual Lessons", "Friends", "Family"
+];
+
+const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+const MOON_PHASES = [
+  { name: "New Moon",        emoji: "🌑", theme: "plant intentions" },
+  { name: "Waxing Crescent", emoji: "🌒", theme: "first action" },
+  { name: "First Quarter",   emoji: "🌓", theme: "push through resistance" },
+  { name: "Waxing Gibbous",  emoji: "🌔", theme: "refine" },
+  { name: "Full Moon",       emoji: "🌕", theme: "release and share" },
+  { name: "Waning Gibbous",  emoji: "🌖", theme: "reflect" },
+  { name: "Last Quarter",    emoji: "🌗", theme: "let go" },
+  { name: "Waning Crescent", emoji: "🌘", theme: "rest and integrate" }
+];
+
+const CREATIVE_STATES = ["Active", "Incubating", "Dormant"];
+
+const STORAGE_KEY = "life-tracker-v1";
+
+const TABS = [
+  { id: "today",    label: "Today",   icon: "☀" },
+  { id: "habits",   label: "Habits",  icon: "▦" },
+  { id: "moon",     label: "Moon",    icon: "🌙" },
+  { id: "keys",     label: "Keys",    icon: "✦" },
+  { id: "plans",    label: "Plans",   icon: "✎" },
+  { id: "review",   label: "Review",  icon: "◎" }
+];
+
+/* ======================================================================
+   DATE / TIME UTILITIES (Monday-start weeks, ISO weeks)
+   ====================================================================== */
+
+function startOfDay(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function startOfWeek(date) {
+  const d = startOfDay(date);
+  const day = d.getDay() || 7; // Sunday → 7
+  d.setDate(d.getDate() - day + 1);
+  return d;
+}
+
+function addDays(date, n) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + n);
+  return d;
+}
+
+function dayKey(date) {
+  const d = startOfDay(date);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function isoWeekKey(date) {
+  // ISO 8601 week (Mon-start, week 1 contains Jan 4)
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+  return `${d.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+
+function weekDates(weekStart) {
+  return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+}
+
+function dayIndex(date) {
+  // Mon=0 ... Sun=6
+  const day = date.getDay() || 7;
+  return day - 1;
+}
+
+function fmtDate(date, opts = { weekday: "long", month: "long", day: "numeric" }) {
+  return new Intl.DateTimeFormat("en-US", opts).format(date);
+}
+
+function fmtShort(date) {
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(date);
+}
+
+function fmtWeekRange(weekStart) {
+  const end = addDays(weekStart, 6);
+  return `${fmtShort(weekStart)} – ${fmtShort(end)}`;
+}
+
+/* ======================================================================
+   MOON PHASE
+   ====================================================================== */
+
+const SYNODIC = 29.530588853;
+const REF_NEW_MOON = new Date("2000-01-06T18:14:00Z").getTime();
+
+function moonPhase(date) {
+  const days = (date.getTime() - REF_NEW_MOON) / 86400000;
+  let pos = ((days % SYNODIC) + SYNODIC) % SYNODIC; // 0..SYNODIC
+  const fraction = pos / SYNODIC; // 0..1
+  // Center each named phase on its key fraction (k/8). Window of width 1/8.
+  const idx = Math.floor((fraction + 1 / 16) * 8) % 8;
+  return {
+    ...MOON_PHASES[idx],
+    daysIntoCycle: pos,
+    fraction
+  };
+}
+
+/* ======================================================================
+   STATE / PERSISTENCE
+   ====================================================================== */
+
+const initialState = () => ({
+  // habits[weekKey][habitName] = [v0..v6] for Mon..Sun, each 0 | 0.5 | 1
+  habits: {},
+  // moon notes by date key
+  moonNotes: {},
+  // gene keys by week
+  geneKeys: {},
+  // intentions: { weekly: {weekKey: [3 strings]}, daily: {dayKey: string}, nextWeek: ""(set during sunday review) }
+  intentions: { weekly: {}, daily: {}, nextWeek: "" },
+  // daily check-ins by day key
+  checkins: {},
+  // weekly review reflections
+  reviews: {}
+});
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return initialState();
+    const parsed = JSON.parse(raw);
+    return { ...initialState(), ...parsed };
+  } catch (e) {
+    console.warn("Failed to load state, starting fresh:", e);
+    return initialState();
+  }
+}
+
+function saveState(state) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (e) {
+    console.warn("Failed to save state:", e);
+  }
+}
+
+function isStateEmpty(s) {
+  if (!s) return true;
+  return (
+    Object.keys(s.habits || {}).length === 0 &&
+    Object.keys(s.moonNotes || {}).length === 0 &&
+    Object.keys(s.geneKeys || {}).length === 0 &&
+    Object.keys(s.checkins || {}).length === 0 &&
+    Object.keys(s.reviews || {}).length === 0 &&
+    Object.keys(s.intentions?.weekly || {}).length === 0 &&
+    Object.keys(s.intentions?.daily || {}).length === 0 &&
+    !s.intentions?.nextWeek
+  );
+}
+
+/* ======================================================================
+   SUPABASE HELPERS
+   ====================================================================== */
+
+async function loadCloudState(userId) {
+  const { data, error } = await supabase
+    .from("user_state")
+    .select("data, updated_at")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  return data; // { data, updated_at } | null
+}
+
+async function saveCloudState(userId, state) {
+  const { error } = await supabase
+    .from("user_state")
+    .upsert(
+      { user_id: userId, data: state, updated_at: new Date().toISOString() },
+      { onConflict: "user_id" }
+    );
+  if (error) throw error;
+}
+
+function useAuth() {
+  const [session, setSession] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  useEffect(() => {
+    if (!supabase) { setAuthLoading(false); return; }
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setAuthLoading(false);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_evt, s) => setSession(s));
+    return () => sub.subscription.unsubscribe();
+  }, []);
+  return { session, authLoading };
+}
+
+/* ======================================================================
+   HELPERS
+   ====================================================================== */
+
+function weekHabitData(state, weekKey) {
+  return state.habits[weekKey] || {};
+}
+
+function getHabitValue(state, weekKey, habit, dIdx) {
+  const wk = state.habits[weekKey];
+  if (!wk || !wk[habit]) return 0;
+  return wk[habit][dIdx] ?? 0;
+}
+
+function setHabitValue(state, weekKey, habit, dIdx, value) {
+  const habits = { ...state.habits };
+  const wk = { ...(habits[weekKey] || {}) };
+  const arr = wk[habit] ? [...wk[habit]] : Array(7).fill(0);
+  arr[dIdx] = value;
+  wk[habit] = arr;
+  habits[weekKey] = wk;
+  return { ...state, habits };
+}
+
+function cycleHabitValue(v) {
+  if (v === 0) return 1;
+  if (v === 1) return 0.5;
+  return 0;
+}
+
+function habitWeekTotal(state, weekKey, habit) {
+  const arr = (state.habits[weekKey] || {})[habit];
+  if (!arr) return 0;
+  return arr.reduce((s, v) => s + (v || 0), 0);
+}
+
+function habitWeekBreakdown(state, weekKey, habit) {
+  const arr = (state.habits[weekKey] || {})[habit] || Array(7).fill(0);
+  let full = 0, partial = 0;
+  for (const v of arr) {
+    if (v === 1) full++;
+    else if (v === 0.5) partial++;
+  }
+  return { full, partial, total: full + partial * 0.5 };
+}
+
+/* ======================================================================
+   APP
+   ====================================================================== */
+
+function App() {
+  if (!CONFIG_OK) return html`<${SetupNeeded} />`;
+
+  const { session, authLoading } = useAuth();
+
+  if (authLoading) {
+    return html`<div class="scroll center" style="padding-top:60px"><p class="muted">Loading…</p></div>`;
+  }
+  if (!session) return html`<${SignIn} />`;
+
+  return html`<${SignedInApp} session=${session} />`;
+}
+
+function SignedInApp({ session }) {
+  const [state, setState] = useState(loadState);
+  const [tab, setTab] = useState("today");
+  const [hydrated, setHydrated] = useState(false);
+  const [syncStatus, setSyncStatus] = useState("idle"); // 'idle' | 'saving' | 'saved' | 'offline'
+  const today = useMemo(() => startOfDay(new Date()), []);
+  const todayWeek = useMemo(() => startOfWeek(today), [today]);
+  const todayWeekKey = isoWeekKey(today);
+  const userId = session.user.id;
+
+  // Refs to avoid save loops & feedback from realtime
+  const lastCloudJsonRef = useRef(null);
+  const saveTimerRef = useRef(null);
+
+  // Initial cloud hydration: cloud is source of truth on load.
+  // If cloud is empty but local has data, upload local.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const row = await loadCloudState(userId);
+        if (cancelled) return;
+        if (row && row.data && !isStateEmpty(row.data)) {
+          setState(row.data);
+          lastCloudJsonRef.current = JSON.stringify(row.data);
+          saveState(row.data);
+        } else if (!isStateEmpty(state)) {
+          // Cloud empty, local has data → upload as initial cloud state
+          await saveCloudState(userId, state);
+          lastCloudJsonRef.current = JSON.stringify(state);
+        } else {
+          lastCloudJsonRef.current = JSON.stringify(state);
+        }
+      } catch (err) {
+        console.warn("Cloud hydrate failed, using local cache:", err);
+        setSyncStatus("offline");
+      } finally {
+        if (!cancelled) setHydrated(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [userId]);
+
+  // Realtime: when our row changes from another session, pull it in
+  useEffect(() => {
+    if (!supabase || !userId) return;
+    const channel = supabase
+      .channel(`user_state:${userId}`)
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "user_state",
+        filter: `user_id=eq.${userId}`
+      }, (payload) => {
+        const remote = payload.new?.data;
+        if (!remote) return;
+        const remoteJson = JSON.stringify(remote);
+        if (remoteJson === lastCloudJsonRef.current) return; // echo of our own write
+        lastCloudJsonRef.current = remoteJson;
+        setState(remote);
+        saveState(remote);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [userId]);
+
+  // Persist to local immediately + debounced cloud save
+  useEffect(() => {
+    if (!hydrated) return;
+    saveState(state);
+    const json = JSON.stringify(state);
+    if (json === lastCloudJsonRef.current) return;
+
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    setSyncStatus("saving");
+    saveTimerRef.current = setTimeout(async () => {
+      try {
+        await saveCloudState(userId, state);
+        lastCloudJsonRef.current = json;
+        setSyncStatus("saved");
+        setTimeout(() => setSyncStatus(s => s === "saved" ? "idle" : s), 1200);
+      } catch (err) {
+        console.warn("Cloud save failed:", err);
+        setSyncStatus("offline");
+      }
+    }, 700);
+    return () => clearTimeout(saveTimerRef.current);
+  }, [state, hydrated, userId]);
+
+  const patch = useCallback((updater) => {
+    setState((s) => (typeof updater === "function" ? updater(s) : { ...s, ...updater }));
+  }, []);
+
+  const ctx = { state, patch, today, todayWeek, todayWeekKey, session, syncStatus };
+
+  return html`
+    <${Header} today=${today} tab=${tab} session=${session} syncStatus=${syncStatus} />
+    <div class="scroll">
+      ${tab === "today"   && html`<${TodayView}    ...${ctx} />`}
+      ${tab === "habits"  && html`<${HabitsView}   ...${ctx} />`}
+      ${tab === "moon"    && html`<${MoonView}     ...${ctx} />`}
+      ${tab === "keys"    && html`<${KeysView}     ...${ctx} />`}
+      ${tab === "plans"   && html`<${PlansView}    ...${ctx} />`}
+      ${tab === "review"  && html`<${ReviewView}   ...${ctx} />`}
+    </div>
+    <${TabBar} tab=${tab} setTab=${setTab} />
+  `;
+}
+
+/* ======================================================================
+   SETUP NEEDED (Supabase config missing)
+   ====================================================================== */
+
+function SetupNeeded() {
+  const [copied, setCopied] = useState(false);
+  const copySql = async () => {
+    try {
+      await navigator.clipboard.writeText(SUPABASE_SQL);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {}
+  };
+  return html`
+    <header class="header">
+      <div class="date">Setup</div>
+      <div class="title">Connect Supabase</div>
+    </header>
+    <div class="scroll">
+      <p class="small" style="color:var(--text-soft);margin-bottom:14px">
+        One-time setup so your data syncs across devices and never gets lost. Free tier is plenty.
+      </p>
+
+      <div class="card">
+        <h2>1 · Create a project</h2>
+        <p class="small">
+          Sign up free at <a href="https://supabase.com" target="_blank" rel="noreferrer">supabase.com</a>
+          and create a new project. Wait ~2 min for it to provision. Pick a region near you.
+        </p>
+      </div>
+
+      <div class="card">
+        <h2>2 · Copy your keys</h2>
+        <p class="small">In your Supabase project: <strong>Settings → API</strong>. Copy two values:</p>
+        <ul class="small" style="padding-left:18px;margin:6px 0">
+          <li><strong>Project URL</strong> (looks like <code>https://abcd1234.supabase.co</code>)</li>
+          <li><strong>anon public</strong> key (a long string starting <code>eyJ…</code>)</li>
+        </ul>
+        <p class="small">Open <code>life-tracker/index.html</code> in your editor, find the lines:</p>
+        <pre class="export" style="font-size:11px">const SUPABASE_URL = "&lt;&lt;YOUR_SUPABASE_URL&gt;&gt;";
+const SUPABASE_ANON_KEY = "&lt;&lt;YOUR_SUPABASE_ANON_KEY&gt;&gt;";</pre>
+        <p class="small" style="margin-top:8px">…and paste your values inside the quotes.</p>
+      </div>
+
+      <div class="card">
+        <h2>3 · Run this SQL</h2>
+        <p class="small" style="margin-bottom:10px">In Supabase: <strong>SQL Editor → New query</strong>. Paste and click Run.</p>
+        <pre class="export" style="font-size:11px">${SUPABASE_SQL}</pre>
+        <button class="btn btn-block" style="margin-top:10px" onClick=${copySql}>${copied ? "Copied" : "Copy SQL"}</button>
+      </div>
+
+      <div class="card">
+        <h2>4 · (Optional) Skip email confirmation</h2>
+        <p class="small">For a personal account, in Supabase go to <strong>Authentication → Providers → Email</strong> and turn off <em>"Confirm email"</em>. You'll be signed in instantly on sign-up.</p>
+      </div>
+
+      <div class="card">
+        <h2>5 · Reload</h2>
+        <p class="small">Save your edits, reload this page, then sign up with email + password.</p>
+      </div>
+    </div>
+  `;
+}
+
+/* ======================================================================
+   SIGN IN
+   ====================================================================== */
+
+function SignIn() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [mode, setMode] = useState("signin"); // 'signin' | 'signup'
+  const [err, setErr] = useState("");
+  const [info, setInfo] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setErr(""); setInfo(""); setBusy(true);
+    try {
+      if (mode === "signin") {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) setErr(error.message);
+      } else {
+        const { data, error } = await supabase.auth.signUp({ email, password });
+        if (error) setErr(error.message);
+        else if (!data.session) {
+          setInfo("Check your email to confirm, then come back and sign in.");
+        }
+      }
+    } catch (e2) {
+      setErr(String(e2));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return html`
+    <header class="header">
+      <div class="date">Life Tracker</div>
+      <div class="title">${mode === "signin" ? "Sign in" : "Create account"}</div>
+    </header>
+    <div class="scroll" style="max-width:420px;margin:0 auto">
+      <form onSubmit=${submit} class="card">
+        <div class="field">
+          <label class="label">Email</label>
+          <input
+            class="input"
+            type="email"
+            autocomplete="email"
+            required
+            value=${email}
+            onInput=${e => setEmail(e.target.value)}
+          />
+        </div>
+        <div class="field">
+          <label class="label">Password</label>
+          <input
+            class="input"
+            type="password"
+            autocomplete=${mode === "signin" ? "current-password" : "new-password"}
+            required
+            minlength="6"
+            value=${password}
+            onInput=${e => setPassword(e.target.value)}
+          />
+        </div>
+        ${err && html`<p class="small" style="color:#a04040;margin-bottom:10px">${err}</p>`}
+        ${info && html`<p class="small" style="color:var(--accent-deep);margin-bottom:10px">${info}</p>`}
+        <button class="btn btn-primary btn-block" disabled=${busy} type="submit">
+          ${busy ? "…" : (mode === "signin" ? "Sign in" : "Sign up")}
+        </button>
+      </form>
+      <button
+        class="btn btn-ghost btn-block"
+        style="margin-top:12px"
+        onClick=${() => { setMode(mode === "signin" ? "signup" : "signin"); setErr(""); setInfo(""); }}
+      >
+        ${mode === "signin" ? "No account? Create one" : "Have an account? Sign in"}
+      </button>
+      <p class="tiny center" style="margin-top:24px">
+        Your data is private to your account. Synced across devices.
+      </p>
+    </div>
+  `;
+}
+
+/* ======================================================================
+   HEADER
+   ====================================================================== */
+
+function Header({ today, tab, session, syncStatus }) {
+  const tabName = TABS.find(t => t.id === tab)?.label || "";
+  const statusLabel = {
+    idle: "",
+    saving: "Saving…",
+    saved: "Saved",
+    offline: "Offline"
+  }[syncStatus] || "";
+  const statusColor = syncStatus === "offline" ? "#a04040"
+                    : syncStatus === "saved"   ? "var(--done)"
+                    : "var(--muted)";
+  return html`
+    <header class="header">
+      <div class="row-between">
+        <div>
+          <div class="date">${fmtDate(today)}</div>
+          <div class="title">${tabName}</div>
+        </div>
+        ${session && html`
+          <div class="stack-tight" style="align-items:flex-end">
+            <span class="tiny" style=${`color:${statusColor};min-height:14px`}>${statusLabel}</span>
+            <button
+              class="btn btn-ghost"
+              style="font-size:11px;padding:4px 8px"
+              onClick=${async () => {
+                if (confirm("Sign out? Your data stays in the cloud.")) {
+                  await supabase.auth.signOut();
+                }
+              }}
+            >Sign out</button>
+          </div>
+        `}
+      </div>
+    </header>
+  `;
+}
+
+/* ======================================================================
+   TAB BAR
+   ====================================================================== */
+
+function TabBar({ tab, setTab }) {
+  return html`
+    <nav class="tabbar">
+      ${TABS.map(t => html`
+        <button
+          key=${t.id}
+          class="tab ${tab === t.id ? "active" : ""}"
+          onClick=${() => setTab(t.id)}
+        >
+          <span class="ic">${t.icon}</span>
+          <span>${t.label}</span>
+        </button>
+      `)}
+    </nav>
+  `;
+}
+
+/* ======================================================================
+   TODAY VIEW
+   ====================================================================== */
+
+function TodayView({ state, patch, today, todayWeek, todayWeekKey }) {
+  const todayKey = dayKey(today);
+  const dIdx = dayIndex(today);
+  const dow = today.getDay(); // 0=Sun, 2=Tue, 4=Thu
+
+  // Tue/Thu reminder banner: weekly intentions + today's one-thing
+  const showBanner = dow === 2 || dow === 4;
+  const weeklyIntentions = state.intentions.weekly[todayWeekKey] || [];
+  const todayOneThing = state.intentions.daily[todayKey] || "";
+
+  const checkin = state.checkins[todayKey] || {};
+  const setCheckinField = (k, v) => patch(s => ({
+    ...s,
+    checkins: { ...s.checkins, [todayKey]: { ...(s.checkins[todayKey] || {}), [k]: v } }
+  }));
+
+  // Gene Key for this week
+  const gk = state.geneKeys[todayWeekKey];
+
+  const cycleHabit = (habit) => {
+    const cur = getHabitValue(state, todayWeekKey, habit, dIdx);
+    const next = cycleHabitValue(cur);
+    patch(s => setHabitValue(s, todayWeekKey, habit, dIdx, next));
+  };
+
+  return html`
+    ${showBanner && (weeklyIntentions.some(Boolean) || todayOneThing) && html`
+      <div class="banner">
+        <h3>${dow === 2 ? "Tuesday" : "Thursday"} reminder</h3>
+        ${todayOneThing && html`<p style="font-weight:500;margin-bottom:6px">Today: ${todayOneThing}</p>`}
+        ${weeklyIntentions.some(Boolean) && html`
+          <ul>
+            ${weeklyIntentions.filter(Boolean).map((i, k) => html`<li key=${k}>${i}</li>`)}
+          </ul>
+        `}
+      </div>
+    `}
+
+    ${todayOneThing && html`
+      <div class="one-thing">
+        <div class="lbl-top">Today's one thing</div>
+        <div class="text">${todayOneThing}</div>
+      </div>
+    `}
+
+    <div class="card">
+      <h2>Habits today</h2>
+      <p class="muted small" style="margin-bottom:12px">Tap to cycle: empty → done → half</p>
+      <div class="today-habits">
+        ${HABITS.map(h => {
+          const v = getHabitValue(state, todayWeekKey, h, dIdx);
+          const cls = v === 1 ? "done" : v === 0.5 ? "partial" : "";
+          const mark = v === 1 ? "✓" : v === 0.5 ? "½" : "";
+          return html`
+            <button key=${h} class="today-habit ${cls}" onClick=${() => cycleHabit(h)}>
+              <span>${h}</span>
+              <span class="mark">${mark}</span>
+            </button>
+          `;
+        })}
+      </div>
+    </div>
+
+    ${gk && html`
+      <div class="card">
+        <h2>Gene Key prompt</h2>
+        <p class="small" style="margin-bottom:10px;color:var(--text-soft)">
+          Where did I notice <strong style="color:var(--accent-deep)">${gk.shadow || "the Shadow"}</strong> or <strong style="color:var(--done)">${gk.gift || "the Gift"}</strong> today?
+        </p>
+        <textarea
+          class="textarea"
+          rows="3"
+          placeholder="A moment, a feeling, a noticing..."
+          value=${(gk.logs && gk.logs[todayKey]) || ""}
+          onInput=${(e) => patch(s => {
+            const keys = { ...s.geneKeys };
+            const k = { ...(keys[todayWeekKey] || {}) };
+            const logs = { ...(k.logs || {}) };
+            logs[todayKey] = e.target.value;
+            k.logs = logs;
+            keys[todayWeekKey] = k;
+            return { ...s, geneKeys: keys };
+          })}
+        />
+      </div>
+    `}
+
+    <${EveningCheckIn}
+      checkin=${checkin}
+      setField=${setCheckinField}
+    />
+
+    <button
+      class="btn btn-ghost btn-block"
+      style="margin-top:8px;font-size:12px"
+      onClick=${async () => {
+        if (!confirm("Reset all data? This wipes your cloud row too. Cannot be undone.")) return;
+        try {
+          if (supabase && state) {
+            const { data: { session: s } } = await supabase.auth.getSession();
+            if (s?.user?.id) {
+              await supabase.from("user_state").delete().eq("user_id", s.user.id);
+            }
+          }
+        } catch (e) {
+          console.warn("Cloud reset failed:", e);
+        }
+        localStorage.removeItem(STORAGE_KEY);
+        location.reload();
+      }}
+    >Reset all data</button>
+  `;
+}
+
+/* ======================================================================
+   EVENING CHECK-IN
+   ====================================================================== */
+
+function EveningCheckIn({ checkin, setField }) {
+  const grat = checkin.gratitude || ["", "", ""];
+  const setGrat = (i, v) => {
+    const next = [...grat];
+    next[i] = v;
+    setField("gratitude", next);
+  };
+
+  const creative = checkin.creative || { status: "Active", pulse: "" };
+  const setCreative = (k, v) => setField("creative", { ...creative, [k]: v });
+
+  return html`
+    <div class="card">
+      <h2>Evening check-in</h2>
+
+      <div class="field">
+        <label class="label">What happened today</label>
+        <textarea
+          class="textarea"
+          rows="3"
+          value=${checkin.whatHappened || ""}
+          onInput=${e => setField("whatHappened", e.target.value)}
+        />
+      </div>
+
+      <div class="field">
+        <label class="label">Wellbeing (1–10)</label>
+        <div class="scale">
+          ${Array.from({ length: 10 }, (_, i) => i + 1).map(n => html`
+            <button
+              key=${n}
+              class=${checkin.wellbeing === n ? "sel" : ""}
+              onClick=${() => setField("wellbeing", n)}
+            >${n}</button>
+          `)}
+        </div>
+        <input
+          class="input"
+          style="margin-top:8px"
+          placeholder="Why? (optional, one line)"
+          value=${checkin.wellbeingWhy || ""}
+          onInput=${e => setField("wellbeingWhy", e.target.value)}
+        />
+      </div>
+
+      <div class="field">
+        <label class="label">A moment of stillness</label>
+        <input
+          class="input"
+          value=${checkin.stillness || ""}
+          onInput=${e => setField("stillness", e.target.value)}
+        />
+      </div>
+
+      <div class="field">
+        <label class="label">A moment of visibility or connection</label>
+        <input
+          class="input"
+          value=${checkin.visibility || ""}
+          onInput=${e => setField("visibility", e.target.value)}
+        />
+      </div>
+
+      <div class="field">
+        <label class="label">Who did I connect with — and how did it feel?</label>
+        <textarea
+          class="textarea"
+          rows="2"
+          value=${checkin.connection || ""}
+          onInput=${e => setField("connection", e.target.value)}
+        />
+      </div>
+
+      <div class="field">
+        <label class="label">Body notes</label>
+        <input
+          class="input"
+          placeholder="One line on how the body felt"
+          value=${checkin.bodyNotes || ""}
+          onInput=${e => setField("bodyNotes", e.target.value)}
+        />
+      </div>
+
+      <div class="field">
+        <label class="label">Creative project</label>
+        <div class="row" style="margin-bottom:8px">
+          ${CREATIVE_STATES.map(s => html`
+            <button
+              key=${s}
+              class="pill ${creative.status === s ? "active" : ""}"
+              onClick=${() => setCreative("status", s)}
+            >${s}</button>
+          `)}
+        </div>
+        <input
+          class="input"
+          placeholder="One-line pulse check"
+          value=${creative.pulse || ""}
+          onInput=${e => setCreative("pulse", e.target.value)}
+        />
+      </div>
+
+      <div class="field">
+        <label class="label">Three things I'm grateful for</label>
+        <div class="stack">
+          ${[0, 1, 2].map(i => html`
+            <input
+              key=${i}
+              class="input"
+              placeholder=${`#${i + 1}`}
+              value=${grat[i] || ""}
+              onInput=${e => setGrat(i, e.target.value)}
+            />
+          `)}
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="label">Tomorrow's one thing that matters most</label>
+        <input
+          class="input"
+          value=${checkin.tomorrowOneThing || ""}
+          onInput=${e => setField("tomorrowOneThing", e.target.value)}
+        />
+        <p class="tiny" style="margin-top:6px">Saved to tomorrow's "one thing" automatically.</p>
+      </div>
+    </div>
+  `;
+}
+
+/* ======================================================================
+   HABITS VIEW
+   ====================================================================== */
+
+function HabitsView({ state, patch, today, todayWeek }) {
+  const [weekStart, setWeekStart] = useState(todayWeek);
+  const [compareHabit, setCompareHabit] = useState(null);
+  const wk = isoWeekKey(addDays(weekStart, 3)); // pick Thu to be safely inside ISO week
+  const days = weekDates(weekStart);
+  const todayKey = dayKey(today);
+
+  return html`
+    <div class="week-nav">
+      <button class="btn btn-icon" onClick=${() => setWeekStart(addDays(weekStart, -7))}>‹</button>
+      <div class="label-wk">
+        <div class="top">${wk}</div>
+        <div class="bot">${fmtWeekRange(weekStart)}</div>
+      </div>
+      <button class="btn btn-icon" onClick=${() => setWeekStart(addDays(weekStart, 7))}>›</button>
+    </div>
+
+    <div class="card">
+      <div class="habit-day-headers">
+        <div></div>
+        ${DAY_LABELS.map((d, i) => html`<div key=${i}>${d[0]}</div>`)}
+        <div style="text-align:right">Σ</div>
+      </div>
+      <div class="grid">
+        ${HABITS.map(h => {
+          const total = habitWeekTotal(state, wk, h);
+          return html`
+            <div class="habit-row" key=${h}>
+              <div class="label">${h}</div>
+              ${days.map((d, i) => {
+                const v = getHabitValue(state, wk, h, i);
+                const cls = v === 1 ? "done" : v === 0.5 ? "partial" : "";
+                const isToday = dayKey(d) === todayKey;
+                const mark = v === 1 ? "✓" : v === 0.5 ? "½" : "";
+                return html`
+                  <button
+                    key=${i}
+                    class="habit-cell ${cls} ${isToday ? "today" : ""}"
+                    onClick=${() => patch(s => setHabitValue(s, wk, h, i, cycleHabitValue(v)))}
+                  >${mark}</button>
+                `;
+              })}
+              <div class="total">${total}</div>
+            </div>
+          `;
+        })}
+      </div>
+    </div>
+
+    <button class="btn btn-block" onClick=${() => setCompareHabit(HABITS[0])}>
+      Compare a habit across weeks
+    </button>
+
+    ${compareHabit && html`
+      <${CompareModal}
+        state=${state}
+        habit=${compareHabit}
+        setHabit=${setCompareHabit}
+        onClose=${() => setCompareHabit(null)}
+      />
+    `}
+  `;
+}
+
+/* Compare habit across weeks */
+function CompareModal({ state, habit, setHabit, onClose }) {
+  // gather all weeks that have any data
+  const allWeeks = Object.keys(state.habits).sort();
+  const last = allWeeks.slice(-12); // last 12 weeks max
+  const max = 7; // max possible weekly total
+
+  return html`
+    <div class="modal-bg" onClick=${onClose}>
+      <div class="modal" onClick=${e => e.stopPropagation()}>
+        <div class="modal-header">
+          <h2>Compare across weeks</h2>
+          <button class="btn btn-ghost btn-icon" onClick=${onClose}>✕</button>
+        </div>
+
+        <div class="field">
+          <label class="label">Habit</label>
+          <select class="select" value=${habit} onChange=${e => setHabit(e.target.value)}>
+            ${HABITS.map(h => html`<option key=${h} value=${h}>${h}</option>`)}
+          </select>
+        </div>
+
+        ${last.length === 0 ? html`<p class="empty">No data yet — tracking starts when you tick a habit.</p>` : html`
+          <div style="margin-top:8px">
+            ${last.map(wk => {
+              const { total, full, partial } = habitWeekBreakdown(state, wk, habit);
+              const pct = (total / max) * 100;
+              return html`
+                <div class="bar-row" key=${wk}>
+                  <div class="lbl">${wk}</div>
+                  <div class="bar-track"><div class="bar-fill" style=${`width:${pct}%`}></div></div>
+                  <div class="val">${total}</div>
+                </div>
+              `;
+            })}
+            <p class="tiny" style="margin-top:8px">Up to 7 per week. Partials count as 0.5.</p>
+          </div>
+        `}
+      </div>
+    </div>
+  `;
+}
+
+/* ======================================================================
+   MOON VIEW
+   ====================================================================== */
+
+function MoonView({ state, patch, today }) {
+  const phase = useMemo(() => moonPhase(today), [today]);
+  const todayKey = dayKey(today);
+  const note = state.moonNotes[todayKey] || "";
+
+  const setNote = (v) => patch(s => ({
+    ...s,
+    moonNotes: { ...s.moonNotes, [todayKey]: v }
+  }));
+
+  // Show recent notes
+  const recentNotes = Object.entries(state.moonNotes)
+    .filter(([_, v]) => v && v.trim())
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .slice(0, 8);
+
+  const isNew  = phase.name === "New Moon";
+  const isFull = phase.name === "Full Moon";
+
+  return html`
+    <div class="card">
+      <div class="moon-display">
+        <div class="moon-emoji">${phase.emoji}</div>
+        <div class="moon-name">${phase.name}</div>
+        <div class="moon-theme">${phase.theme}</div>
+        <div class="moon-meta">Day ${phase.daysIntoCycle.toFixed(1)} of ${SYNODIC.toFixed(1)}-day cycle</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>${isNew ? "New moon intentions" : isFull ? "Full moon reflections" : "Notes for today"}</h2>
+      <p class="small" style="color:var(--text-soft);margin-bottom:10px">
+        ${isNew ? "What seeds are you planting?" :
+          isFull ? "What's complete? What can you release?" :
+          "Any moon notes for today."}
+      </p>
+      <textarea
+        class="textarea"
+        rows="5"
+        value=${note}
+        onInput=${e => setNote(e.target.value)}
+      />
+    </div>
+
+    ${recentNotes.length > 0 && html`
+      <div class="card">
+        <h2>Recent moon notes</h2>
+        ${recentNotes.map(([k, v]) => {
+          const d = new Date(k + "T12:00:00");
+          const p = moonPhase(d);
+          return html`
+            <div class="history-item" key=${k}>
+              <div class="row-between" style="margin-bottom:4px">
+                <span class="small" style="font-weight:500">${p.emoji} ${p.name}</span>
+                <span class="tiny">${fmtShort(d)}</span>
+              </div>
+              <p class="small" style="color:var(--text-soft);white-space:pre-wrap">${v}</p>
+            </div>
+          `;
+        })}
+      </div>
+    `}
+  `;
+}
+
+/* ======================================================================
+   GENE KEYS VIEW
+   ====================================================================== */
+
+function KeysView({ state, patch, today, todayWeek, todayWeekKey }) {
+  const [weekStart, setWeekStart] = useState(todayWeek);
+  const wk = isoWeekKey(addDays(weekStart, 3));
+  const isThisWeek = wk === todayWeekKey;
+  const gk = state.geneKeys[wk] || {};
+  const [editing, setEditing] = useState(!gk.number);
+
+  const setField = (field, value) => patch(s => ({
+    ...s,
+    geneKeys: { ...s.geneKeys, [wk]: { ...(s.geneKeys[wk] || {}), [field]: value } }
+  }));
+
+  const todayKey = dayKey(today);
+  const todaysLog = (gk.logs && gk.logs[todayKey]) || "";
+  const setTodaysLog = (v) => patch(s => {
+    const keys = { ...s.geneKeys };
+    const k = { ...(keys[wk] || {}) };
+    const logs = { ...(k.logs || {}) };
+    logs[todayKey] = v;
+    k.logs = logs;
+    keys[wk] = k;
+    return { ...s, geneKeys: keys };
+  });
+
+  const allLogs = Object.entries(gk.logs || {})
+    .filter(([_, v]) => v && v.trim())
+    .sort((a, b) => b[0].localeCompare(a[0]));
+
+  const allWeeks = Object.entries(state.geneKeys)
+    .filter(([_, v]) => v.number)
+    .sort((a, b) => b[0].localeCompare(a[0]));
+
+  return html`
+    <div class="week-nav">
+      <button class="btn btn-icon" onClick=${() => setWeekStart(addDays(weekStart, -7))}>‹</button>
+      <div class="label-wk">
+        <div class="top">${wk} ${isThisWeek ? "· this week" : ""}</div>
+        <div class="bot">${fmtWeekRange(weekStart)}</div>
+      </div>
+      <button class="btn btn-icon" onClick=${() => setWeekStart(addDays(weekStart, 7))}>›</button>
+    </div>
+
+    ${editing || !gk.number ? html`
+      <div class="card">
+        <h2>${gk.number ? "Edit Gene Key" : "Set Gene Key for this week"}</h2>
+        <div class="field">
+          <label class="label">Key number</label>
+          <input
+            class="input"
+            type="number"
+            min="1" max="64"
+            value=${gk.number || ""}
+            onInput=${e => setField("number", e.target.value ? parseInt(e.target.value) : "")}
+          />
+        </div>
+        <div class="field">
+          <label class="label">Shadow</label>
+          <input class="input" value=${gk.shadow || ""} onInput=${e => setField("shadow", e.target.value)} />
+        </div>
+        <div class="field">
+          <label class="label">Gift</label>
+          <input class="input" value=${gk.gift || ""} onInput=${e => setField("gift", e.target.value)} />
+        </div>
+        <div class="field">
+          <label class="label">Siddhi</label>
+          <input class="input" value=${gk.siddhi || ""} onInput=${e => setField("siddhi", e.target.value)} />
+        </div>
+        ${gk.number && html`<button class="btn btn-primary btn-block" onClick=${() => setEditing(false)}>Done</button>`}
+      </div>
+    ` : html`
+      <div class="card">
+        <div class="row-between" style="margin-bottom:8px">
+          <div class="key-num">${gk.number}</div>
+          <button class="btn btn-ghost" onClick=${() => setEditing(true)}>Edit</button>
+        </div>
+        <div class="key-tier">
+          <div class="key-tier-label">Shadow</div>
+          <div class="key-tier-value">${gk.shadow || "—"}</div>
+        </div>
+        <div class="key-tier">
+          <div class="key-tier-label">Gift</div>
+          <div class="key-tier-value">${gk.gift || "—"}</div>
+        </div>
+        <div class="key-tier">
+          <div class="key-tier-label">Siddhi</div>
+          <div class="key-tier-value">${gk.siddhi || "—"}</div>
+        </div>
+      </div>
+
+      ${isThisWeek && html`
+        <div class="card">
+          <h2>Today's prompt</h2>
+          <p class="small" style="margin-bottom:10px;color:var(--text-soft)">
+            Where did I notice <strong style="color:var(--accent-deep)">${gk.shadow || "the Shadow"}</strong> or <strong style="color:var(--done)">${gk.gift || "the Gift"}</strong> today?
+          </p>
+          <textarea
+            class="textarea"
+            rows="3"
+            value=${todaysLog}
+            onInput=${e => setTodaysLog(e.target.value)}
+          />
+        </div>
+      `}
+
+      ${allLogs.length > 0 && html`
+        <div class="card">
+          <h2>This week's logs</h2>
+          ${allLogs.map(([k, v]) => html`
+            <div class="history-item" key=${k}>
+              <div class="tiny" style="margin-bottom:4px">${fmtDate(new Date(k + "T12:00:00"), { weekday: "short", month: "short", day: "numeric" })}</div>
+              <p class="small" style="white-space:pre-wrap">${v}</p>
+            </div>
+          `)}
+        </div>
+      `}
+    `}
+
+    ${allWeeks.length > 1 && html`
+      <div class="card">
+        <h2>All Gene Keys</h2>
+        ${allWeeks.map(([wkKey, k]) => html`
+          <button
+            key=${wkKey}
+            class="week-pick ${wkKey === wk ? "sel" : ""}"
+            onClick=${() => {
+              // Jump to a week that produces this wkKey
+              // Use Jan 4 of year + (week-1)*7, then start of that week
+              const m = wkKey.match(/^(\d{4})-W(\d{2})$/);
+              if (m) {
+                const yr = parseInt(m[1]);
+                const w  = parseInt(m[2]);
+                const jan4 = new Date(yr, 0, 4);
+                const target = addDays(startOfWeek(jan4), (w - 1) * 7);
+                setWeekStart(target);
+                setEditing(false);
+              }
+            }}
+          >
+            <span><strong>${k.number}</strong> · ${k.gift || "—"}</span>
+            <span class="tiny">${wkKey}</span>
+          </button>
+        `)}
+      </div>
+    `}
+  `;
+}
+
+/* ======================================================================
+   PLANS / INTENTIONS VIEW
+   ====================================================================== */
+
+function PlansView({ state, patch, today, todayWeek, todayWeekKey }) {
+  const [weekStart, setWeekStart] = useState(todayWeek);
+  const wk = isoWeekKey(addDays(weekStart, 3));
+  const isThisWeek = wk === todayWeekKey;
+  const weekly = state.intentions.weekly[wk] || ["", "", ""];
+
+  const setWeekly = (i, v) => {
+    const next = [...weekly];
+    next[i] = v;
+    patch(s => ({
+      ...s,
+      intentions: {
+        ...s.intentions,
+        weekly: { ...s.intentions.weekly, [wk]: next }
+      }
+    }));
+  };
+
+  // Daily one-thing for the displayed week
+  const days = weekDates(weekStart);
+
+  const setDailyOneThing = (dKey, v) => patch(s => ({
+    ...s,
+    intentions: {
+      ...s.intentions,
+      daily: { ...s.intentions.daily, [dKey]: v }
+    }
+  }));
+
+  // "Next week's one thing" — surfaces in Sunday review and on Monday
+  const nextWeekOneThing = state.intentions.nextWeek || "";
+
+  return html`
+    <div class="week-nav">
+      <button class="btn btn-icon" onClick=${() => setWeekStart(addDays(weekStart, -7))}>‹</button>
+      <div class="label-wk">
+        <div class="top">${wk} ${isThisWeek ? "· this week" : ""}</div>
+        <div class="bot">${fmtWeekRange(weekStart)}</div>
+      </div>
+      <button class="btn btn-icon" onClick=${() => setWeekStart(addDays(weekStart, 7))}>›</button>
+    </div>
+
+    <div class="card">
+      <h2>Three intentions for the week</h2>
+      <p class="small" style="color:var(--text-soft);margin-bottom:10px">Set these on Sunday. They surface as gentle reminders on Tuesday and Thursday.</p>
+      <div class="stack">
+        ${[0, 1, 2].map(i => html`
+          <input
+            key=${i}
+            class="input"
+            placeholder=${`Intention ${i + 1}`}
+            value=${weekly[i] || ""}
+            onInput=${e => setWeekly(i, e.target.value)}
+          />
+        `)}
+      </div>
+    </div>
+
+    ${isThisWeek && nextWeekOneThing && html`
+      <div class="one-thing">
+        <div class="lbl-top">Set during last Sunday's review · for Monday</div>
+        <div class="text">${nextWeekOneThing}</div>
+      </div>
+    `}
+
+    <div class="card">
+      <h2>Daily one thing</h2>
+      <p class="small" style="color:var(--text-soft);margin-bottom:10px">The one thing that matters most each day. Set the night before.</p>
+      <div class="stack">
+        ${days.map((d, i) => {
+          const dk = dayKey(d);
+          const todayMark = dk === dayKey(today);
+          return html`
+            <div key=${dk}>
+              <label class="label">${DAY_LABELS[i]} ${fmtShort(d)} ${todayMark ? "· today" : ""}</label>
+              <input
+                class="input"
+                value=${state.intentions.daily[dk] || ""}
+                onInput=${e => setDailyOneThing(dk, e.target.value)}
+              />
+            </div>
+          `;
+        })}
+      </div>
+    </div>
+  `;
+}
+
+/* ======================================================================
+   REVIEW VIEW (Sunday)
+   ====================================================================== */
+
+function ReviewView({ state, patch, today, todayWeek, todayWeekKey }) {
+  const [weekStart, setWeekStart] = useState(todayWeek);
+  const wk = isoWeekKey(addDays(weekStart, 3));
+  const isThisWeek = wk === todayWeekKey;
+  const days = weekDates(weekStart);
+
+  const review = state.reviews[wk] || {};
+  const setReviewField = (k, v) => patch(s => ({
+    ...s,
+    reviews: { ...s.reviews, [wk]: { ...(s.reviews[wk] || {}), [k]: v } }
+  }));
+
+  const weekly = state.intentions.weekly[wk] || [];
+  const intentionChecks = review.intentionChecks || [false, false, false];
+  const setIntentionCheck = (i, v) => {
+    const next = [...intentionChecks];
+    next[i] = v;
+    setReviewField("intentionChecks", next);
+  };
+
+  const gk = state.geneKeys[wk];
+  const startPhase = moonPhase(weekStart);
+  const endPhase = moonPhase(addDays(weekStart, 6));
+
+  // Auto-summary
+  const habitTotals = HABITS.map(h => ({
+    habit: h,
+    ...habitWeekBreakdown(state, wk, h)
+  }));
+
+  // Build exportable summary
+  const summary = useMemo(() => buildSummary({
+    weekKey: wk,
+    weekStart,
+    state,
+    days,
+    habitTotals,
+    weekly,
+    intentionChecks,
+    gk,
+    startPhase,
+    endPhase,
+    review
+  }), [state, wk]);
+
+  const [showExport, setShowExport] = useState(false);
+
+  // Set next week's one thing during Sunday review
+  const setNextWeekOneThing = (v) => patch(s => ({
+    ...s,
+    intentions: { ...s.intentions, nextWeek: v }
+  }));
+
+  return html`
+    <div class="week-nav">
+      <button class="btn btn-icon" onClick=${() => setWeekStart(addDays(weekStart, -7))}>‹</button>
+      <div class="label-wk">
+        <div class="top">${wk} ${isThisWeek ? "· this week" : ""}</div>
+        <div class="bot">${fmtWeekRange(weekStart)}</div>
+      </div>
+      <button class="btn btn-icon" onClick=${() => setWeekStart(addDays(weekStart, 7))}>›</button>
+    </div>
+
+    <div class="card">
+      <h2>Habits</h2>
+      ${habitTotals.map(({ habit, full, partial, total }) => {
+        const pct = (total / 7) * 100;
+        return html`
+          <div class="bar-row" key=${habit} style="grid-template-columns:120px 1fr 60px">
+            <div class="lbl" style="font-size:12px">${habit}</div>
+            <div class="bar-track"><div class="bar-fill" style=${`width:${pct}%`}></div></div>
+            <div class="val">${total} <span class="tiny" style="color:var(--muted)">${full}+${partial}½</span></div>
+          </div>
+        `;
+      })}
+    </div>
+
+    <div class="card">
+      <h2>Weekly intentions</h2>
+      ${weekly.some(Boolean) ? weekly.map((it, i) => html`
+        <label class="row" key=${i} style="margin-bottom:8px;align-items:flex-start">
+          <input
+            type="checkbox"
+            checked=${intentionChecks[i] || false}
+            onChange=${e => setIntentionCheck(i, e.target.checked)}
+            style="margin-top:3px;width:18px;height:18px;accent-color:var(--accent-deep)"
+          />
+          <span class=${"small" + (intentionChecks[i] ? " muted" : "")} style=${intentionChecks[i] ? "text-decoration:line-through" : ""}>
+            ${it || `(intention ${i + 1} unset)`}
+          </span>
+        </label>
+      `) : html`<p class="empty">No weekly intentions set.</p>`}
+    </div>
+
+    ${gk && html`
+      <div class="card">
+        <h2>Gene Key reflection</h2>
+        <p class="small" style="margin-bottom:8px">
+          <strong style="color:var(--accent-deep)">Key ${gk.number}</strong>
+          · Shadow: ${gk.shadow || "—"}
+          · Gift: ${gk.gift || "—"}
+          · Siddhi: ${gk.siddhi || "—"}
+        </p>
+        ${gk.logs && Object.entries(gk.logs).filter(([_, v]) => v && v.trim()).length > 0 ? html`
+          <div style="margin-top:8px">
+            ${Object.entries(gk.logs).filter(([_, v]) => v && v.trim()).sort().map(([k, v]) => html`
+              <div class="history-item" key=${k}>
+                <div class="tiny" style="margin-bottom:2px">${fmtDate(new Date(k + "T12:00:00"), { weekday: "short" })}</div>
+                <p class="small" style="white-space:pre-wrap">${v}</p>
+              </div>
+            `)}
+          </div>
+        ` : html`<p class="muted small">No logs this week.</p>`}
+        <textarea
+          class="textarea"
+          rows="3"
+          style="margin-top:10px"
+          placeholder="Reflection on the Shadow, Gift, or Siddhi this week..."
+          value=${review.geneKeyReflection || ""}
+          onInput=${e => setReviewField("geneKeyReflection", e.target.value)}
+        />
+      </div>
+    `}
+
+    <div class="card">
+      <h2>Moon context</h2>
+      <p class="small">
+        Started: ${startPhase.emoji} <strong>${startPhase.name}</strong>
+        ${startPhase.name !== endPhase.name ? html` → Ended: ${endPhase.emoji} <strong>${endPhase.name}</strong>` : ""}
+      </p>
+      <p class="muted small" style="margin-top:4px">${startPhase.theme}${startPhase.name !== endPhase.name ? ` → ${endPhase.theme}` : ""}</p>
+    </div>
+
+    <div class="card">
+      <h2>Open reflection</h2>
+      <p class="small" style="color:var(--text-soft);margin-bottom:10px">What stood out? What was alive? What wants attention next week?</p>
+      <textarea
+        class="textarea"
+        rows="6"
+        value=${review.openReflection || ""}
+        onInput=${e => setReviewField("openReflection", e.target.value)}
+      />
+    </div>
+
+    ${isThisWeek && html`
+      <div class="card">
+        <h2>Set next week's one thing</h2>
+        <p class="small" style="color:var(--text-soft);margin-bottom:10px">So Monday starts with clarity.</p>
+        <input
+          class="input"
+          value=${state.intentions.nextWeek || ""}
+          onInput=${e => setNextWeekOneThing(e.target.value)}
+        />
+      </div>
+    `}
+
+    <button class="btn btn-primary btn-block" onClick=${() => setShowExport(true)}>
+      View / export summary
+    </button>
+
+    ${showExport && html`
+      <${ExportModal} summary=${summary} onClose=${() => setShowExport(false)} />
+    `}
+  `;
+}
+
+/* ======================================================================
+   EXPORT MODAL
+   ====================================================================== */
+
+function ExportModal({ summary, onClose }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(summary);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // fallback
+      const ta = document.createElement("textarea");
+      ta.value = summary;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }
+  };
+  const download = () => {
+    const blob = new Blob([summary], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `weekly-review-${new Date().toISOString().slice(0,10)}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  return html`
+    <div class="modal-bg" onClick=${onClose}>
+      <div class="modal" onClick=${e => e.stopPropagation()}>
+        <div class="modal-header">
+          <h2>Weekly summary</h2>
+          <button class="btn btn-ghost btn-icon" onClick=${onClose}>✕</button>
+        </div>
+        <pre class="export">${summary}</pre>
+        <div class="row" style="margin-top:12px;gap:8px">
+          <button class="btn btn-primary" style="flex:1" onClick=${copy}>${copied ? "Copied" : "Copy"}</button>
+          <button class="btn" style="flex:1" onClick=${download}>Download .md</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/* ======================================================================
+   SUMMARY BUILDER
+   ====================================================================== */
+
+function buildSummary({ weekKey, weekStart, state, days, habitTotals, weekly, intentionChecks, gk, startPhase, endPhase, review }) {
+  const lines = [];
+  lines.push(`# Weekly Review · ${weekKey}`);
+  lines.push(`${fmtWeekRange(weekStart)}`);
+  lines.push("");
+
+  lines.push("## Habits");
+  for (const { habit, full, partial, total } of habitTotals) {
+    lines.push(`- ${habit}: ${total} (${full} full + ${partial} half)`);
+  }
+  lines.push("");
+
+  lines.push("## Weekly intentions");
+  if (weekly.some(Boolean)) {
+    weekly.forEach((it, i) => {
+      const mark = intentionChecks[i] ? "[x]" : "[ ]";
+      lines.push(`- ${mark} ${it || "(unset)"}`);
+    });
+  } else {
+    lines.push("- (none set)");
+  }
+  lines.push("");
+
+  if (gk && gk.number) {
+    lines.push(`## Gene Key ${gk.number}`);
+    lines.push(`- Shadow: ${gk.shadow || "—"}`);
+    lines.push(`- Gift: ${gk.gift || "—"}`);
+    lines.push(`- Siddhi: ${gk.siddhi || "—"}`);
+    const logs = Object.entries(gk.logs || {}).filter(([_, v]) => v && v.trim()).sort();
+    if (logs.length) {
+      lines.push("");
+      lines.push("### Daily logs");
+      for (const [k, v] of logs) {
+        lines.push(`- **${fmtDate(new Date(k + "T12:00:00"), { weekday: "short" })}:** ${v}`);
+      }
+    }
+    if (review.geneKeyReflection) {
+      lines.push("");
+      lines.push("### Reflection");
+      lines.push(review.geneKeyReflection);
+    }
+    lines.push("");
+  }
+
+  lines.push("## Moon");
+  if (startPhase.name === endPhase.name) {
+    lines.push(`- ${startPhase.emoji} ${startPhase.name} — ${startPhase.theme}`);
+  } else {
+    lines.push(`- Start: ${startPhase.emoji} ${startPhase.name} (${startPhase.theme})`);
+    lines.push(`- End: ${endPhase.emoji} ${endPhase.name} (${endPhase.theme})`);
+  }
+  lines.push("");
+
+  // Daily check-in highlights
+  const checkinDays = days
+    .map(d => ({ d, c: state.checkins[dayKey(d)] }))
+    .filter(({ c }) => c && Object.values(c).some(v => v && (typeof v === "string" ? v.trim() : true)));
+
+  if (checkinDays.length) {
+    lines.push("## Daily highlights");
+    for (const { d, c } of checkinDays) {
+      lines.push(`### ${fmtDate(d, { weekday: "long", month: "short", day: "numeric" })}`);
+      if (c.wellbeing) lines.push(`- Wellbeing: ${c.wellbeing}/10${c.wellbeingWhy ? ` — ${c.wellbeingWhy}` : ""}`);
+      if (c.whatHappened) lines.push(`- What: ${c.whatHappened}`);
+      if (c.stillness) lines.push(`- Stillness: ${c.stillness}`);
+      if (c.visibility) lines.push(`- Visibility: ${c.visibility}`);
+      if (c.connection) lines.push(`- Connection: ${c.connection}`);
+      if (c.bodyNotes) lines.push(`- Body: ${c.bodyNotes}`);
+      if (c.creative && c.creative.status) lines.push(`- Creative: ${c.creative.status}${c.creative.pulse ? ` — ${c.creative.pulse}` : ""}`);
+      if (c.gratitude && c.gratitude.some(Boolean)) {
+        lines.push(`- Grateful: ${c.gratitude.filter(Boolean).join("; ")}`);
+      }
+      lines.push("");
+    }
+  }
+
+  if (review.openReflection) {
+    lines.push("## Open reflection");
+    lines.push(review.openReflection);
+    lines.push("");
+  }
+
+  return lines.join("\n");
+}
+
+/* ======================================================================
+   MOUNT
+   ====================================================================== */
+
+render(html`<${App} />`, document.getElementById("app"));
+
+</script>
+</body>
+</html>
