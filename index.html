@@ -589,8 +589,8 @@
     color: var(--accent-deep);
   }
 
-  /* Theme toggle */
-  .theme-toggle {
+  /* Theme toggle + small icon buttons */
+  .theme-toggle, .icon-btn {
     width: 32px; height: 32px;
     border-radius: 8px;
     background: var(--card-soft);
@@ -601,6 +601,78 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+  }
+
+  /* Streak badge on today habit pills */
+  .today-habit .streak {
+    font-size: 10px;
+    color: var(--accent-deep);
+    font-weight: 600;
+    flex-shrink: 0;
+    background: var(--card);
+    padding: 1px 5px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Wellbeing chart */
+  .well-chart {
+    width: 100%;
+    height: 60px;
+    display: block;
+  }
+
+  /* Year heatmap */
+  .heatmap-wrap {
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+  .heatmap {
+    display: grid;
+    grid-template-rows: repeat(7, 14px);
+    grid-auto-flow: column;
+    grid-auto-columns: 14px;
+    gap: 2px;
+    width: max-content;
+  }
+  .heatmap-cell {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    background: var(--card-soft);
+  }
+
+  /* Search */
+  .search-result {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .search-result:last-child { border-bottom: none; }
+  .search-source {
+    font-size: 10px;
+    color: var(--accent-deep);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    margin-right: 6px;
+  }
+  .search-date {
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .search-meta { margin-bottom: 4px; }
+  .search-text {
+    font-size: 14px;
+    color: var(--text);
+    white-space: pre-wrap;
+    line-height: 1.45;
+  }
+  .search-text mark {
+    background: var(--accent-soft);
+    color: var(--text);
+    padding: 0 2px;
+    border-radius: 3px;
   }
 
   /* Trends sparkline rows */
@@ -688,7 +760,7 @@ alter publication supabase_realtime add table public.user_state;
    ====================================================================== */
 
 const HABITS = [
-  "Stretch/Mobility", "Strength", "Cardio", "Sauna", "Float",
+  "Stretch/Mobility", "Strength", "Cardio", "Ruck", "Sauna", "Float",
   "Rope Flow", "Ocean", "Reading", "Creating", "Spanish",
   "Spiritual Lessons", "Friends", "Family"
 ];
@@ -697,6 +769,7 @@ const HABIT_ICONS = {
   "Stretch/Mobility":  "🧘",
   "Strength":          "💪",
   "Cardio":            "🏃",
+  "Ruck":              "🎒",
   "Sauna":             "🔥",
   "Float":             "💧",
   "Rope Flow":         "🪢",
@@ -967,6 +1040,93 @@ function habitWeekBreakdown(state, weekKey, habit) {
   return { full, partial, total: full + partial * 0.5 };
 }
 
+function habitStreak(state, habit, today) {
+  // Counts consecutive days ending today (or yesterday if today not yet logged)
+  // with value > 0. Partials (0.5) keep the streak alive.
+  let streak = 0;
+  let d = new Date(today);
+  const todayWk = isoWeekKey(d);
+  const todayIdx = dayIndex(d);
+  const todayVal = (state.habits[todayWk]?.[habit] || [])[todayIdx] || 0;
+  if (todayVal > 0) streak++;
+  d = addDays(d, -1);
+  for (let i = 0; i < 365; i++) {
+    const wk = isoWeekKey(d);
+    const idx = dayIndex(d);
+    const v = (state.habits[wk]?.[habit] || [])[idx] || 0;
+    if (v > 0) { streak++; d = addDays(d, -1); }
+    else break;
+  }
+  return streak;
+}
+
+function searchAll(state, query) {
+  if (!query || !query.trim()) return [];
+  const q = query.toLowerCase();
+  const hit = (text) => text && typeof text === "string" && text.toLowerCase().includes(q);
+  const results = [];
+
+  for (const [dk, c] of Object.entries(state.checkins || {})) {
+    if (!c) continue;
+    const fields = [
+      ["What happened",       c.whatHappened],
+      ["Wellbeing reason",    c.wellbeingWhy],
+      ["Stillness",           c.stillness],
+      ["Visibility",          c.visibility],
+      ["Connection",          c.connection],
+      ["Body notes",          c.bodyNotes],
+      ["Creative pulse",      c.creative?.pulse],
+      ["Tomorrow's one thing", c.tomorrowOneThing]
+    ];
+    for (const [label, text] of fields) {
+      if (hit(text)) results.push({ dateKey: dk, sortKey: dk, source: label, text });
+    }
+    (c.gratitude || []).forEach((g, i) => {
+      if (hit(g)) results.push({ dateKey: dk, sortKey: dk, source: `Gratitude ${i + 1}`, text: g });
+    });
+  }
+  for (const [dk, note] of Object.entries(state.moonNotes || {})) {
+    if (hit(note)) results.push({ dateKey: dk, sortKey: dk, source: "Moon note", text: note });
+  }
+  for (const [dk, t] of Object.entries(state.intentions?.daily || {})) {
+    if (hit(t)) results.push({ dateKey: dk, sortKey: dk, source: "Daily one thing", text: t });
+  }
+  for (const [wk, arr] of Object.entries(state.intentions?.weekly || {})) {
+    (arr || []).forEach((it, i) => {
+      if (hit(it)) results.push({ dateKey: wk, sortKey: wk, source: `Weekly intention ${i + 1}`, text: it });
+    });
+  }
+  for (const [wk, gk] of Object.entries(state.geneKeys || {})) {
+    if (gk?.logs) {
+      for (const [dk, log] of Object.entries(gk.logs)) {
+        if (hit(log)) results.push({ dateKey: dk, sortKey: dk, source: `Gene Key ${gk.number || "?"} noticing`, text: log });
+      }
+    }
+    if (hit(gk?.shadow)) results.push({ dateKey: wk, sortKey: wk, source: "Gene Key Shadow", text: gk.shadow });
+    if (hit(gk?.gift))   results.push({ dateKey: wk, sortKey: wk, source: "Gene Key Gift",   text: gk.gift });
+    if (hit(gk?.siddhi)) results.push({ dateKey: wk, sortKey: wk, source: "Gene Key Siddhi", text: gk.siddhi });
+  }
+  for (const [wk, r] of Object.entries(state.reviews || {})) {
+    if (hit(r?.geneKeyReflection)) results.push({ dateKey: wk, sortKey: wk, source: "Gene Key reflection",  text: r.geneKeyReflection });
+    if (hit(r?.openReflection))    results.push({ dateKey: wk, sortKey: wk, source: "Weekly reflection",    text: r.openReflection });
+  }
+
+  results.sort((a, b) => b.sortKey.localeCompare(a.sortKey));
+  return results;
+}
+
+function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+
+function highlightHtml(text, query) {
+  if (!query.trim()) return text;
+  const parts = text.split(new RegExp(`(${escapeRegex(query)})`, "gi"));
+  return parts.map((p, i) =>
+    p.toLowerCase() === query.toLowerCase()
+      ? html`<mark key=${i}>${p}</mark>`
+      : p
+  );
+}
+
 /* ======================================================================
    APP
    ====================================================================== */
@@ -1006,6 +1166,7 @@ function SignedInApp({ session, theme, toggleTheme }) {
   const [tab, setTab] = useState("today");
   const [hydrated, setHydrated] = useState(false);
   const [syncStatus, setSyncStatus] = useState("idle"); // 'idle' | 'saving' | 'saved' | 'offline'
+  const [showSearch, setShowSearch] = useState(false);
   const today = useMemo(() => startOfDay(new Date()), []);
   const todayWeek = useMemo(() => startOfWeek(today), [today]);
   const todayWeekKey = isoWeekKey(today);
@@ -1097,7 +1258,15 @@ function SignedInApp({ session, theme, toggleTheme }) {
   const ctx = { state, patch, today, todayWeek, todayWeekKey, session, syncStatus };
 
   return html`
-    <${Header} today=${today} tab=${tab} session=${session} syncStatus=${syncStatus} theme=${theme} toggleTheme=${toggleTheme} />
+    <${Header}
+      today=${today}
+      tab=${tab}
+      session=${session}
+      syncStatus=${syncStatus}
+      theme=${theme}
+      toggleTheme=${toggleTheme}
+      onSearch=${() => setShowSearch(true)}
+    />
     <div class="scroll">
       ${tab === "today"   && html`<${TodayView}    ...${ctx} />`}
       ${tab === "habits"  && html`<${HabitsView}   ...${ctx} />`}
@@ -1107,6 +1276,7 @@ function SignedInApp({ session, theme, toggleTheme }) {
       ${tab === "review"  && html`<${ReviewView}   ...${ctx} />`}
     </div>
     <${TabBar} tab=${tab} setTab=${setTab} />
+    ${showSearch && html`<${SearchModal} state=${state} onClose=${() => setShowSearch(false)} />`}
   `;
 }
 
@@ -1261,7 +1431,7 @@ function SignIn() {
    HEADER
    ====================================================================== */
 
-function Header({ today, tab, session, syncStatus, theme, toggleTheme }) {
+function Header({ today, tab, session, syncStatus, theme, toggleTheme, onSearch }) {
   const tabName = TABS.find(t => t.id === tab)?.label || "";
   const statusLabel = {
     idle: "",
@@ -1279,7 +1449,15 @@ function Header({ today, tab, session, syncStatus, theme, toggleTheme }) {
           <div class="date">${fmtDate(today)}</div>
           <div class="title">${tabName}</div>
         </div>
-        <div class="row" style="gap:8px;align-items:flex-start">
+        <div class="row" style="gap:6px;align-items:flex-start">
+          ${onSearch && session && html`
+            <button
+              class="icon-btn"
+              onClick=${onSearch}
+              aria-label="Search journal"
+              title="Search journal"
+            >⌕</button>
+          `}
           ${toggleTheme && html`
             <button
               class="theme-toggle"
@@ -1386,10 +1564,12 @@ function TodayView({ state, patch, today, todayWeek, todayWeekKey }) {
           const v = getHabitValue(state, todayWeekKey, h, dIdx);
           const cls = v === 1 ? "done" : v === 0.5 ? "partial" : "";
           const mark = v === 1 ? "✓" : v === 0.5 ? "½" : "";
+          const streak = habitStreak(state, h, today);
           return html`
             <button key=${h} class="today-habit ${cls}" onClick=${() => cycleHabit(h)}>
               <span class="ico">${HABIT_ICONS[h] || ""}</span>
               <span class="name">${h}</span>
+              ${streak >= 2 && html`<span class="streak" title=${`${streak}-day streak`}>🔥${streak}</span>`}
               <span class="mark">${mark}</span>
             </button>
           `;
@@ -1420,6 +1600,8 @@ function TodayView({ state, patch, today, todayWeek, todayWeekKey }) {
         />
       </div>
     `}
+
+    <${WellbeingCard} checkins=${state.checkins} days=${14} />
 
     <${EveningCheckIn}
       checkin=${checkin}
@@ -1589,6 +1771,7 @@ function EveningCheckIn({ checkin, setField }) {
 function HabitsView({ state, patch, today, todayWeek }) {
   const [weekStart, setWeekStart] = useState(todayWeek);
   const [showTrends, setShowTrends] = useState(false);
+  const [showHeatmap, setShowHeatmap] = useState(false);
   const wk = isoWeekKey(addDays(weekStart, 3)); // pick Thu to be safely inside ISO week
   const days = weekDates(weekStart);
   const todayKey = dayKey(today);
@@ -1638,11 +1821,17 @@ function HabitsView({ state, patch, today, todayWeek }) {
       </div>
     </div>
 
-    <button class="btn btn-block" onClick=${() => setShowTrends(true)}>
-      View all habit trends
-    </button>
+    <div class="row" style="gap:8px;margin-top:4px">
+      <button class="btn" style="flex:1" onClick=${() => setShowTrends(true)}>
+        Trends
+      </button>
+      <button class="btn" style="flex:1" onClick=${() => setShowHeatmap(true)}>
+        Year heatmap
+      </button>
+    </div>
 
-    ${showTrends && html`<${TrendsModal} state=${state} onClose=${() => setShowTrends(false)} />`}
+    ${showTrends  && html`<${TrendsModal}  state=${state} onClose=${() => setShowTrends(false)} />`}
+    ${showHeatmap && html`<${HeatmapModal} state=${state} onClose=${() => setShowHeatmap(false)} />`}
   `;
 }
 
@@ -2113,13 +2302,16 @@ function ReviewView({ state, patch, today, todayWeek, todayWeekKey }) {
         const pct = (total / 7) * 100;
         return html`
           <div class="bar-row" key=${habit} style="grid-template-columns:120px 1fr 60px">
-            <div class="lbl" style="font-size:12px">${habit}</div>
+            <div class="lbl" style="font-size:12px">${HABIT_ICONS[habit] || ""} ${habit}</div>
             <div class="bar-track"><div class="bar-fill" style=${`width:${pct}%`}></div></div>
             <div class="val">${total} <span class="tiny" style="color:var(--muted)">${full}+${partial}½</span></div>
           </div>
         `;
       })}
     </div>
+
+    <${WeekWellbeingCard} state=${state} weekStart=${weekStart} />
+
 
     <div class="card">
       <h2>Weekly intentions</h2>
@@ -2467,6 +2659,237 @@ function buildRangeSummary(state, startDate, endDate) {
   }
 
   return lines.join("\n");
+}
+
+/* ======================================================================
+   WELLBEING CHART
+   ====================================================================== */
+
+function WellbeingChart({ checkins, endDate, days = 14, height = 60 }) {
+  const end = startOfDay(endDate || new Date());
+  const start = addDays(end, -(days - 1));
+  const points = [];
+  for (let i = 0; i < days; i++) {
+    const d = addDays(start, i);
+    const v = checkins[dayKey(d)]?.wellbeing;
+    points.push({ date: d, value: typeof v === "number" ? v : null });
+  }
+  const filled = points.filter(p => p.value !== null);
+  if (filled.length < 2) {
+    return html`<p class="muted small">Need at least 2 days of wellbeing logs.</p>`;
+  }
+
+  const w = 320, h = height, pad = 6;
+  const innerW = w - pad * 2;
+  const innerH = h - pad * 2;
+  const xs = (i) => pad + (i / (days - 1)) * innerW;
+  const ys = (v) => pad + innerH - ((v - 1) / 9) * innerH;
+
+  // Path with gaps for missing days
+  let d = "";
+  let inSeg = false;
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i];
+    if (p.value !== null) {
+      d += (inSeg ? " L " : "M ") + xs(i).toFixed(1) + " " + ys(p.value).toFixed(1) + " ";
+      inSeg = true;
+    } else {
+      inSeg = false;
+    }
+  }
+
+  return html`
+    <svg class="well-chart" viewBox=${`0 0 ${w} ${h}`} preserveAspectRatio="none">
+      <line x1=${pad} y1=${ys(5)} x2=${w - pad} y2=${ys(5)} stroke="var(--border)" stroke-width="0.5" stroke-dasharray="3 3"/>
+      <path d=${d} fill="none" stroke="var(--accent-deep)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      ${points.map((p, i) => p.value !== null && html`
+        <circle key=${i} cx=${xs(i).toFixed(1)} cy=${ys(p.value).toFixed(1)} r="2.5" fill="var(--accent-deep)"/>
+      `)}
+    </svg>
+  `;
+}
+
+function WeekWellbeingCard({ state, weekStart }) {
+  const days = weekDates(weekStart);
+  let count = 0, sum = 0;
+  for (const d of days) {
+    const v = state.checkins[dayKey(d)]?.wellbeing;
+    if (typeof v === "number") { count++; sum += v; }
+  }
+  if (count < 2) return null;
+  const avg = sum / count;
+  const endDate = days[6];
+  return html`
+    <div class="card">
+      <div class="row-between" style="margin-bottom:8px">
+        <h2 style="margin:0">Wellbeing this week</h2>
+        <span class="small" style="color:var(--text-soft)">avg ${avg.toFixed(1)}/10</span>
+      </div>
+      <${WellbeingChart} checkins=${state.checkins} endDate=${endDate} days=${7} />
+    </div>
+  `;
+}
+
+function WellbeingCard({ checkins, days = 14, title }) {
+  const end = startOfDay(new Date());
+  const start = addDays(end, -(days - 1));
+  let count = 0, sum = 0;
+  for (let i = 0; i < days; i++) {
+    const v = checkins[dayKey(addDays(start, i))]?.wellbeing;
+    if (typeof v === "number") { count++; sum += v; }
+  }
+  if (count < 2) return null;
+  const avg = sum / count;
+  return html`
+    <div class="card">
+      <div class="row-between" style="margin-bottom:8px">
+        <h2 style="margin:0">${title || `Wellbeing · ${days} days`}</h2>
+        <span class="small" style="color:var(--text-soft)">avg ${avg.toFixed(1)}/10</span>
+      </div>
+      <${WellbeingChart} checkins=${checkins} days=${days} />
+    </div>
+  `;
+}
+
+/* ======================================================================
+   YEAR HEATMAP MODAL
+   ====================================================================== */
+
+function HeatmapModal({ state, onClose }) {
+  const [habit, setHabit] = useState("_combined");
+  const today = startOfDay(new Date());
+  const weeksBack = 52;
+  const start = startOfWeek(addDays(today, -(weeksBack * 7 - 1)));
+
+  const cells = useMemo(() => {
+    const arr = [];
+    for (let d = new Date(start); d <= today; d = addDays(d, 1)) {
+      const wk = isoWeekKey(d);
+      const idx = dayIndex(d);
+      let v;
+      if (habit === "_combined") {
+        let sum = 0;
+        for (const h of HABITS) sum += (state.habits[wk]?.[h] || [])[idx] || 0;
+        v = sum;
+      } else {
+        v = (state.habits[wk]?.[habit] || [])[idx] || 0;
+      }
+      arr.push({ date: new Date(d), value: v });
+    }
+    return arr;
+  }, [state.habits, habit, today.getTime()]);
+
+  const maxVal = habit === "_combined" ? HABITS.length : 1;
+
+  // Streak (per habit, or sum of all)
+  let totalDone = 0;
+  let activeDays = 0;
+  for (const c of cells) {
+    if (c.value > 0) { totalDone += c.value; activeDays++; }
+  }
+
+  // Month labels — sample month transitions at week starts
+  // Compute label positions: for each Monday in the range, if its month differs from previous Monday's, show the month abbr at that column
+  const monthLabels = [];
+  let prevMonth = -1;
+  let weekIdx = 0;
+  for (let d = new Date(start); d <= today; d = addDays(d, 7)) {
+    if (d.getMonth() !== prevMonth) {
+      monthLabels.push({ idx: weekIdx, label: d.toLocaleDateString("en-US", { month: "short" }) });
+      prevMonth = d.getMonth();
+    }
+    weekIdx++;
+  }
+
+  return html`
+    <div class="modal-bg" onClick=${onClose}>
+      <div class="modal" onClick=${e => e.stopPropagation()}>
+        <div class="modal-header">
+          <h2>Year heatmap</h2>
+          <button class="btn btn-ghost btn-icon" onClick=${onClose}>✕</button>
+        </div>
+
+        <select class="select" value=${habit} onChange=${e => setHabit(e.target.value)} style="margin-bottom:12px">
+          <option value="_combined">All habits combined</option>
+          ${HABITS.map(h => html`<option key=${h} value=${h}>${HABIT_ICONS[h] || ""} ${h}</option>`)}
+        </select>
+
+        <div class="heatmap-wrap">
+          <div class="heatmap">
+            ${cells.map((c, i) => {
+              const pct = maxVal > 0 ? Math.min(c.value / maxVal, 1) : 0;
+              const bg = c.value === 0
+                ? "var(--card-soft)"
+                : `color-mix(in srgb, var(--done) ${20 + Math.round(pct * 70)}%, var(--card-soft))`;
+              const label = `${dayKey(c.date)} — ${habit === "_combined" ? `${c.value}/${HABITS.length}` : (c.value === 1 ? "done" : c.value === 0.5 ? "half" : "—")}`;
+              return html`<div class="heatmap-cell" key=${i} style=${`background:${bg}`} title=${label}></div>`;
+            })}
+          </div>
+        </div>
+
+        <p class="tiny" style="margin-top:10px">Past 52 weeks · Mon top, Sun bottom · scroll → for older.</p>
+
+        <div class="row" style="gap:16px;margin-top:8px;justify-content:center">
+          <span class="tiny">${activeDays} active days</span>
+          ${habit === "_combined" && html`<span class="tiny">${totalDone.toFixed(1)} total completions</span>`}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/* ======================================================================
+   SEARCH MODAL
+   ====================================================================== */
+
+function SearchModal({ state, onClose }) {
+  const [q, setQ] = useState("");
+  const results = useMemo(() => searchAll(state, q), [state, q]);
+
+  // Format the dateKey nicely depending on whether it's YYYY-MM-DD or YYYY-Www
+  const fmtKey = (k) => {
+    if (/^\d{4}-W\d{2}$/.test(k)) return k;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(k)) {
+      const d = new Date(k + "T12:00:00");
+      return fmtDate(d, { weekday: "short", year: "numeric", month: "short", day: "numeric" });
+    }
+    return k;
+  };
+
+  return html`
+    <div class="modal-bg" onClick=${onClose}>
+      <div class="modal" onClick=${e => e.stopPropagation()} style="max-height:90vh">
+        <div class="modal-header">
+          <h2>Search journal</h2>
+          <button class="btn btn-ghost btn-icon" onClick=${onClose}>✕</button>
+        </div>
+        <input
+          class="input"
+          placeholder="Search across all entries…"
+          autofocus
+          value=${q}
+          onInput=${e => setQ(e.target.value)}
+          style="margin-bottom:12px"
+        />
+        ${!q.trim() ? html`
+          <p class="muted small">Type to search across daily check-ins, moon notes, gene key logs, intentions, and reviews.</p>
+        ` : results.length === 0 ? html`
+          <p class="empty">No matches.</p>
+        ` : html`
+          <p class="tiny" style="margin-bottom:4px">${results.length} result${results.length === 1 ? "" : "s"}</p>
+          ${results.map((r, i) => html`
+            <div class="search-result" key=${i}>
+              <div class="search-meta">
+                <span class="search-source">${r.source}</span>
+                <span class="search-date">${fmtKey(r.dateKey)}</span>
+              </div>
+              <div class="search-text">${highlightHtml(r.text, q)}</div>
+            </div>
+          `)}
+        `}
+      </div>
+    </div>
+  `;
 }
 
 /* ======================================================================
