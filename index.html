@@ -490,7 +490,7 @@
   /* Compact habit list (today) */
   .today-habits {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 6px;
   }
   .today-habit {
@@ -630,24 +630,21 @@
     display: block;
   }
 
-  /* Year heatmap */
-  .heatmap-wrap {
-    overflow-x: auto;
-    padding-bottom: 4px;
-  }
+  /* Heatmap */
+  .heatmap-wrap { padding-bottom: 4px; }
   .heatmap {
     display: grid;
-    grid-template-rows: repeat(7, 14px);
+    grid-template-rows: repeat(7, minmax(0, 1fr));
     grid-auto-flow: column;
-    grid-auto-columns: 14px;
+    grid-auto-columns: minmax(0, 1fr);
     gap: 2px;
-    width: max-content;
+    width: 100%;
+    aspect-ratio: 22 / 7;
   }
   .heatmap-cell {
-    width: 14px;
-    height: 14px;
     border-radius: 3px;
     background: var(--card-soft);
+    min-width: 0;
   }
 
   /* Search */
@@ -767,26 +764,31 @@ alter publication supabase_realtime add table public.user_state;
    ====================================================================== */
 
 const HABITS = [
-  "Stretch/Mobility", "Strength", "Cardio", "Ruck", "Sauna", "Float",
+  "Yoga", "Strength", "Cardio", "Ruck", "Sauna", "Float",
   "Rope Flow", "Ocean", "Reading", "Creating", "Spanish",
-  "Spiritual Lessons", "Friends", "Family"
+  "Spiritual", "Friends", "Family"
 ];
 
 const HABIT_ICONS = {
-  "Stretch/Mobility":  "🧘",
-  "Strength":          "💪",
-  "Cardio":            "🏃",
-  "Ruck":              "🎒",
-  "Sauna":             "🔥",
-  "Float":             "💧",
-  "Rope Flow":         "🪢",
-  "Ocean":             "🌊",
-  "Reading":           "📖",
-  "Creating":          "🎨",
-  "Spanish":           "🗣",
-  "Spiritual Lessons": "✨",
-  "Friends":           "👥",
-  "Family":            "🏡"
+  "Yoga":      "🧘",
+  "Strength":  "💪",
+  "Cardio":    "🏃",
+  "Ruck":      "🎒",
+  "Sauna":     "🔥",
+  "Float":     "💧",
+  "Rope Flow": "🪢",
+  "Ocean":     "🌊",
+  "Reading":   "📖",
+  "Creating":  "🎨",
+  "Spanish":   "🗣",
+  "Spiritual": "✨",
+  "Friends":   "👥",
+  "Family":    "🏡"
+};
+
+const HABIT_RENAMES = {
+  "Stretch/Mobility":  "Yoga",
+  "Spiritual Lessons": "Spiritual"
 };
 
 const THEME_KEY = "lt-theme-v1";
@@ -928,12 +930,33 @@ const initialState = () => ({
   reviews: {}
 });
 
+function migrateState(s) {
+  // Idempotent habit renames (Stretch/Mobility → Yoga, etc.)
+  if (s.habits) {
+    for (const wk of Object.keys(s.habits)) {
+      const wkObj = s.habits[wk];
+      for (const [oldName, newName] of Object.entries(HABIT_RENAMES)) {
+        if (wkObj[oldName] === undefined) continue;
+        if (wkObj[newName]) {
+          // Both exist — take max per day so no data is lost
+          const a = wkObj[oldName], b = wkObj[newName];
+          for (let i = 0; i < 7; i++) b[i] = Math.max(b[i] || 0, a[i] || 0);
+        } else {
+          wkObj[newName] = wkObj[oldName];
+        }
+        delete wkObj[oldName];
+      }
+    }
+  }
+  return s;
+}
+
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return initialState();
     const parsed = JSON.parse(raw);
-    return { ...initialState(), ...parsed };
+    return migrateState({ ...initialState(), ...parsed });
   } catch (e) {
     console.warn("Failed to load state, starting fresh:", e);
     return initialState();
@@ -1112,7 +1135,7 @@ function searchAll(state, query) {
     if (hit(gk?.shadow))       results.push({ dateKey: wk, sortKey: wk, source: "Gene Key Shadow",       text: gk.shadow });
     if (hit(gk?.gift))         results.push({ dateKey: wk, sortKey: wk, source: "Gene Key Gift",         text: gk.gift });
     if (hit(gk?.siddhi))       results.push({ dateKey: wk, sortKey: wk, source: "Gene Key Siddhi",       text: gk.siddhi });
-    if (hit(gk?.weeklyNotes))  results.push({ dateKey: wk, sortKey: wk, source: "Gene Key weekly notes", text: gk.weeklyNotes });
+    if (hit(gk?.weeklyNotes))  results.push({ dateKey: wk, sortKey: wk, source: "Gene Key — what I've learned", text: gk.weeklyNotes });
   }
   for (const [wk, r] of Object.entries(state.reviews || {})) {
     if (hit(r?.geneKeyReflection)) results.push({ dateKey: wk, sortKey: wk, source: "Gene Key reflection",  text: r.geneKeyReflection });
@@ -1193,9 +1216,10 @@ function SignedInApp({ session, theme, toggleTheme }) {
         const row = await loadCloudState(userId);
         if (cancelled) return;
         if (row && row.data && !isStateEmpty(row.data)) {
-          setState(row.data);
-          lastCloudJsonRef.current = JSON.stringify(row.data);
-          saveState(row.data);
+          const migrated = migrateState(row.data);
+          setState(migrated);
+          lastCloudJsonRef.current = JSON.stringify(migrated);
+          saveState(migrated);
         } else if (!isStateEmpty(state)) {
           // Cloud empty, local has data → upload as initial cloud state
           await saveCloudState(userId, state);
@@ -1229,8 +1253,9 @@ function SignedInApp({ session, theme, toggleTheme }) {
         const remoteJson = JSON.stringify(remote);
         if (remoteJson === lastCloudJsonRef.current) return; // echo of our own write
         lastCloudJsonRef.current = remoteJson;
-        setState(remote);
-        saveState(remote);
+        const migrated = migrateState(remote);
+        setState(migrated);
+        saveState(migrated);
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -1520,35 +1545,71 @@ function TabBar({ tab, setTab }) {
    ====================================================================== */
 
 function TodayView({ state, patch, today, todayWeek, todayWeekKey }) {
-  const todayKey = dayKey(today);
-  const dIdx = dayIndex(today);
-  const dow = today.getDay(); // 0=Sun, 2=Tue, 4=Thu
+  const [selectedDate, setSelectedDate] = useState(today);
+  const isToday      = dayKey(selectedDate) === dayKey(today);
+  const isYesterday  = dayKey(selectedDate) === dayKey(addDays(today, -1));
+  const selectedKey  = dayKey(selectedDate);
+  const selectedWk   = isoWeekKey(selectedDate);
+  const dIdx         = dayIndex(selectedDate);
+  const dow          = selectedDate.getDay(); // 0=Sun, 2=Tue, 4=Thu
 
-  // Tue/Thu reminder banner: weekly intentions + today's one-thing
-  const showBanner = dow === 2 || dow === 4;
-  const weeklyIntentions = state.intentions.weekly[todayWeekKey] || [];
-  const todayOneThing = state.intentions.daily[todayKey] || "";
+  const dayLabel = isToday ? "Today"
+    : isYesterday ? "Yesterday"
+    : fmtDate(selectedDate, { weekday: "long" });
 
-  const checkin = state.checkins[todayKey] || {};
+  // Tue/Thu reminder banner: only on real today
+  const showBanner = isToday && (dow === 2 || dow === 4);
+  const weeklyIntentions = state.intentions.weekly[selectedWk] || [];
+  const oneThing = state.intentions.daily[selectedKey] || "";
+
+  const checkin = state.checkins[selectedKey] || {};
   const setCheckinField = (k, v) => patch(s => ({
     ...s,
-    checkins: { ...s.checkins, [todayKey]: { ...(s.checkins[todayKey] || {}), [k]: v } }
+    checkins: { ...s.checkins, [selectedKey]: { ...(s.checkins[selectedKey] || {}), [k]: v } }
   }));
 
-  // Gene Key for this week
-  const gk = state.geneKeys[todayWeekKey];
+  // "Tomorrow's one thing" reads/writes to intentions.daily of the day AFTER selectedDate
+  const nextDayKey = dayKey(addDays(selectedDate, 1));
+  const tomorrowOneThing = state.intentions.daily[nextDayKey] || "";
+  const setTomorrowOneThing = (v) => patch(s => ({
+    ...s,
+    intentions: { ...s.intentions, daily: { ...s.intentions.daily, [nextDayKey]: v } }
+  }));
+
+  // Gene Key for the selected week
+  const gk = state.geneKeys[selectedWk];
 
   const cycleHabit = (habit) => {
-    const cur = getHabitValue(state, todayWeekKey, habit, dIdx);
+    const cur = getHabitValue(state, selectedWk, habit, dIdx);
     const next = cycleHabitValue(cur);
-    patch(s => setHabitValue(s, todayWeekKey, habit, dIdx, next));
+    patch(s => setHabitValue(s, selectedWk, habit, dIdx, next));
   };
 
   return html`
-    ${showBanner && (weeklyIntentions.some(Boolean) || todayOneThing) && html`
+    <div class="week-nav">
+      <button class="btn btn-icon" onClick=${() => setSelectedDate(addDays(selectedDate, -1))} aria-label="Previous day">‹</button>
+      <div class="label-wk">
+        <div class="top">${isToday ? "" : fmtShort(selectedDate)}</div>
+        <div class="bot">${dayLabel}${isToday ? "" : ` · ${fmtShort(selectedDate)}`}</div>
+      </div>
+      <button
+        class="btn btn-icon"
+        onClick=${() => setSelectedDate(addDays(selectedDate, 1))}
+        disabled=${isToday}
+        style=${isToday ? "opacity:0.35" : ""}
+        aria-label="Next day"
+      >›</button>
+    </div>
+    ${!isToday && html`
+      <button class="btn btn-ghost btn-block" style="margin-top:-4px;margin-bottom:8px;font-size:12px" onClick=${() => setSelectedDate(today)}>
+        Jump to today
+      </button>
+    `}
+
+    ${showBanner && (weeklyIntentions.some(Boolean) || oneThing) && html`
       <div class="banner">
         <h3>${dow === 2 ? "Tuesday" : "Thursday"} reminder</h3>
-        ${todayOneThing && html`<p style="font-weight:500;margin-bottom:6px">Today: ${todayOneThing}</p>`}
+        ${oneThing && html`<p style="font-weight:500;margin-bottom:6px">Today: ${oneThing}</p>`}
         ${weeklyIntentions.some(Boolean) && html`
           <ul>
             ${weeklyIntentions.filter(Boolean).map((i, k) => html`<li key=${k}>${i}</li>`)}
@@ -1557,22 +1618,22 @@ function TodayView({ state, patch, today, todayWeek, todayWeekKey }) {
       </div>
     `}
 
-    ${todayOneThing && html`
+    ${oneThing && html`
       <div class="one-thing">
-        <div class="lbl-top">Today's one thing</div>
-        <div class="text">${todayOneThing}</div>
+        <div class="lbl-top">${isToday ? "Today's one thing" : `${dayLabel}'s one thing`}</div>
+        <div class="text">${oneThing}</div>
       </div>
     `}
 
     <div class="card">
-      <h2>Habits today</h2>
+      <h2>Habits ${isToday ? "today" : `· ${fmtShort(selectedDate)}`}</h2>
       <p class="muted small" style="margin-bottom:12px">Tap to cycle: empty → done → half</p>
       <div class="today-habits">
         ${HABITS.map(h => {
-          const v = getHabitValue(state, todayWeekKey, h, dIdx);
+          const v = getHabitValue(state, selectedWk, h, dIdx);
           const cls = v === 1 ? "done" : v === 0.5 ? "partial" : "";
           const mark = v === 1 ? "✓" : v === 0.5 ? "½" : "";
-          const streak = habitStreak(state, h, today);
+          const streak = isToday ? habitStreak(state, h, today) : 0;
           return html`
             <button key=${h} class="today-habit ${cls}" onClick=${() => cycleHabit(h)}>
               <span class="ico">${HABIT_ICONS[h] || ""}</span>
@@ -1589,31 +1650,32 @@ function TodayView({ state, patch, today, todayWeek, todayWeekKey }) {
       <div class="card">
         <h2>Gene Key prompt</h2>
         <p class="small" style="margin-bottom:10px;color:var(--text-soft)">
-          Where did I notice <strong style="color:var(--accent-deep)">${gk.shadow || "the Shadow"}</strong> or <strong style="color:var(--done)">${gk.gift || "the Gift"}</strong> today?
+          Where did I notice <strong style="color:var(--accent-deep)">${gk.shadow || "the Shadow"}</strong> or <strong style="color:var(--done)">${gk.gift || "the Gift"}</strong> ${isToday ? "today" : `on ${fmtShort(selectedDate)}`}?
         </p>
         <textarea
           class="textarea"
           rows="3"
           placeholder="A moment, a feeling, a noticing..."
-          value=${(gk.logs && gk.logs[todayKey]) || ""}
+          value=${(gk.logs && gk.logs[selectedKey]) || ""}
           onInput=${(e) => patch(s => {
             const keys = { ...s.geneKeys };
-            const k = { ...(keys[todayWeekKey] || {}) };
+            const k = { ...(keys[selectedWk] || {}) };
             const logs = { ...(k.logs || {}) };
-            logs[todayKey] = e.target.value;
+            logs[selectedKey] = e.target.value;
             k.logs = logs;
-            keys[todayWeekKey] = k;
+            keys[selectedWk] = k;
             return { ...s, geneKeys: keys };
           })}
         />
       </div>
     `}
 
-    <${WellbeingCard} checkins=${state.checkins} days=${14} />
-
     <${EveningCheckIn}
       checkin=${checkin}
       setField=${setCheckinField}
+      tomorrowOneThing=${tomorrowOneThing}
+      setTomorrowOneThing=${setTomorrowOneThing}
+      nextDayLabel=${isToday ? "Tomorrow" : fmtDate(addDays(selectedDate, 1), { weekday: "long" })}
     />
 
     <button
@@ -1642,7 +1704,7 @@ function TodayView({ state, patch, today, todayWeek, todayWeekKey }) {
    EVENING CHECK-IN
    ====================================================================== */
 
-function EveningCheckIn({ checkin, setField }) {
+function EveningCheckIn({ checkin, setField, tomorrowOneThing, setTomorrowOneThing, nextDayLabel = "Tomorrow" }) {
   const grat = checkin.gratitude || ["", "", ""];
   const setGrat = (i, v) => {
     const next = [...grat];
@@ -1760,13 +1822,13 @@ function EveningCheckIn({ checkin, setField }) {
       </div>
 
       <div class="field">
-        <label class="label">Tomorrow's one thing that matters most</label>
+        <label class="label">${nextDayLabel}'s one thing that matters most</label>
         <input
           class="input"
-          value=${checkin.tomorrowOneThing || ""}
-          onInput=${e => setField("tomorrowOneThing", e.target.value)}
+          value=${tomorrowOneThing || ""}
+          onInput=${e => setTomorrowOneThing(e.target.value)}
         />
-        <p class="tiny" style="margin-top:6px">Saved to tomorrow's "one thing" automatically.</p>
+        <p class="tiny" style="margin-top:6px">Shows automatically at the top of ${nextDayLabel.toLowerCase()}'s view.</p>
       </div>
     </div>
   `;
@@ -1846,9 +1908,21 @@ function HabitsView({ state, patch, today, todayWeek }) {
 /* All-habit trends — sparkline per habit, with up/sideways/down indicator */
 function TrendsModal({ state, onClose }) {
   const [windowSize, setWindowSize] = useState(8); // weeks to show
-  const allWeeks = Object.keys(state.habits).sort();
-  const weeks = allWeeks.slice(-windowSize);
-  const hasData = weeks.length >= 2;
+  const today = startOfDay(new Date());
+
+  // Build the window: an array of week-keys ending with this week, going back `windowSize` weeks.
+  // Pads with empty weeks if data doesn't reach that far — so the time axis is always meaningful.
+  const weeks = useMemo(() => {
+    const arr = [];
+    for (let i = windowSize - 1; i >= 0; i--) {
+      const weekStart = startOfWeek(addDays(today, -7 * i));
+      arr.push({ key: isoWeekKey(weekStart), start: weekStart });
+    }
+    return arr;
+  }, [windowSize, today.getTime()]);
+
+  const windowStart = weeks[0].start;
+  const windowEnd = addDays(weeks[weeks.length - 1].start, 6);
 
   return html`
     <div class="modal-bg" onClick=${onClose}>
@@ -1858,7 +1932,7 @@ function TrendsModal({ state, onClose }) {
           <button class="btn btn-ghost btn-icon" onClick=${onClose}>✕</button>
         </div>
 
-        <div class="row" style="gap:6px;margin-bottom:12px">
+        <div class="row" style="gap:6px;margin-bottom:8px">
           ${[4, 8, 12, 26].map(n => html`
             <button
               key=${n}
@@ -1867,31 +1941,34 @@ function TrendsModal({ state, onClose }) {
             >${n}w</button>
           `)}
         </div>
+        <p class="tiny" style="margin:0 0 12px;color:var(--text-soft)">
+          ${windowSize} weeks · ${fmtShort(windowStart)} – ${fmtShort(windowEnd)}
+        </p>
 
-        ${!hasData ? html`
-          <p class="empty">Need at least 2 weeks of data to show trends.</p>
-        ` : html`
-          <div>
-            ${HABITS.map(h => {
-              const totals = weeks.map(wk => habitWeekTotal(state, wk, h));
-              const trend = computeTrend(totals);
-              const avg = totals.reduce((a, b) => a + b, 0) / totals.length;
-              return html`
-                <div class="trend-row" key=${h}>
-                  <div class="ico">${HABIT_ICONS[h] || ""}</div>
-                  <div class="nm">${h}</div>
-                  <${Sparkline} values=${totals} max=${7} />
-                  <div class="arrow ${trend.cls}">${trend.arrow}</div>
-                  <div class="avg">${avg.toFixed(1)}</div>
-                </div>
-              `;
-            })}
-            <p class="tiny" style="margin-top:10px">
-              Sparkline = weekly totals (max 7). Arrow = linear trend over the window.
-              Avg = mean weekly total.
-            </p>
-          </div>
-        `}
+        <div>
+          ${HABITS.map(h => {
+            const totals = weeks.map(({ key }) => habitWeekTotal(state, key, h));
+            const dataCount = totals.filter(v => v > 0).length;
+            const trend = dataCount >= 3 ? computeTrend(totals) : { arrow: "·", cls: "flat" };
+            const avg = dataCount > 0
+              ? totals.reduce((a, b) => a + b, 0) / totals.length
+              : 0;
+            return html`
+              <div class="trend-row" key=${h}>
+                <div class="ico">${HABIT_ICONS[h] || ""}</div>
+                <div class="nm">${h}</div>
+                <${Sparkline} values=${totals} max=${7} />
+                <div class="arrow ${trend.cls}">${trend.arrow}</div>
+                <div class="avg">${avg.toFixed(1)}</div>
+              </div>
+            `;
+          })}
+          <p class="tiny" style="margin-top:10px">
+            Each spark covers ${windowSize} weeks ending this week.
+            Arrow shows trend once you have 3+ active weeks.
+            Avg = mean of weekly totals (max 7).
+          </p>
+        </div>
       </div>
     </div>
   `;
@@ -2101,14 +2178,14 @@ function KeysView({ state, patch, today, todayWeek, todayWeekKey }) {
       </div>
 
       <div class="card">
-        <h2>Weekly notes</h2>
+        <h2>What I've learned</h2>
         <p class="small" style="margin-bottom:10px;color:var(--text-soft)">
-          Open notes for the whole week — themes, insights, anything that stays with this Gene Key.
+          Capture what you've learned about this Gene Key all week. The teachings, the meaning of the Shadow / Gift / Siddhi in your own words, examples from your life — anything that helps it actually land.
         </p>
         <textarea
           class="textarea"
-          rows="5"
-          placeholder="What's surfacing about the Shadow, the Gift, or the Siddhi this week..."
+          rows="6"
+          placeholder=${`What you're learning about Gene Key ${gk.number || ""}...`}
           value=${gk.weeklyNotes || ""}
           onInput=${e => setField("weeklyNotes", e.target.value)}
         />
@@ -2622,7 +2699,7 @@ function buildRangeSummary(state, startDate, endDate) {
       weekDataLines.push("");
       weekDataLines.push(`**Gene Key ${gk.number}:** Shadow ${gk.shadow || "—"} · Gift ${gk.gift || "—"} · Siddhi ${gk.siddhi || "—"}`);
       if (gk.weeklyNotes) {
-        weekDataLines.push(`**Gene Key weekly notes:** ${gk.weeklyNotes}`);
+        weekDataLines.push(`**What I've learned about Gene Key ${gk.number}:** ${gk.weeklyNotes}`);
       }
       if (review?.geneKeyReflection) {
         weekDataLines.push(`**Gene Key reflection:** ${review.geneKeyReflection}`);
@@ -2783,7 +2860,7 @@ function WellbeingCard({ checkins, days = 14, title }) {
 function HeatmapModal({ state, onClose }) {
   const [habit, setHabit] = useState("_combined");
   const today = startOfDay(new Date());
-  const weeksBack = 52;
+  const weeksBack = 22;
   const start = startOfWeek(addDays(today, -(weeksBack * 7 - 1)));
 
   const cells = useMemo(() => {
@@ -2852,7 +2929,9 @@ function HeatmapModal({ state, onClose }) {
           </div>
         </div>
 
-        <p class="tiny" style="margin-top:10px">Past 52 weeks · Mon top, Sun bottom · scroll → for older.</p>
+        <p class="tiny" style="margin-top:10px">
+          Past ${weeksBack} weeks · Mon top, Sun bottom · oldest on the left → most recent on the right.
+        </p>
 
         <div class="row" style="gap:16px;margin-top:8px;justify-content:center">
           <span class="tiny">${activeDays} active days</span>
