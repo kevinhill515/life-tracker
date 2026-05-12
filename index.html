@@ -613,13 +613,19 @@
   /* Streak badge on today habit pills */
   .today-habit .streak {
     font-size: 10px;
-    color: var(--accent-deep);
-    font-weight: 600;
+    line-height: 1;
+    font-weight: 700;
+    color: var(--on-accent);
+    background: var(--accent-deep);
     flex-shrink: 0;
-    background: var(--card);
-    padding: 1px 5px;
-    border-radius: 999px;
-    border: 1px solid var(--border);
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 8px;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     font-variant-numeric: tabular-nums;
   }
 
@@ -1638,7 +1644,7 @@ function TodayView({ state, patch, today, todayWeek, todayWeekKey }) {
             <button key=${h} class="today-habit ${cls}" onClick=${() => cycleHabit(h)}>
               <span class="ico">${HABIT_ICONS[h] || ""}</span>
               <span class="name">${h}</span>
-              ${streak >= 2 && html`<span class="streak" title=${`${streak}-day streak`}>🔥${streak}</span>`}
+              ${streak >= 2 && html`<span class="streak" title=${`${streak}-day streak`}>${streak}</span>`}
               <span class="mark">${mark}</span>
             </button>
           `;
