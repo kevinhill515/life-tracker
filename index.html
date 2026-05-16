@@ -159,7 +159,7 @@
   .btn-block { display: flex; width: 100%; }
 
   /* Inputs */
-  .input, .textarea, .select {
+  .input, .textarea, .textarea-line, .select {
     width: 100%;
     padding: 10px 12px;
     border-radius: 10px;
@@ -168,15 +168,19 @@
     color: var(--text);
     outline: none;
     transition: border-color 0.12s ease;
+    font-family: inherit;
+    font-size: 16px;
+    line-height: 1.5;
   }
-  .input:focus, .textarea:focus, .select:focus {
+  .input:focus, .textarea:focus, .textarea-line:focus, .select:focus {
     border-color: var(--accent);
   }
-  .textarea {
-    min-height: 70px;
+  .textarea, .textarea-line {
     resize: none;            /* auto-grow handles it */
     overflow: hidden;        /* no scrollbars; grow to fit */
   }
+  .textarea      { min-height: 70px; }
+  .textarea-line { min-height: 42px; }   /* starts at one line, grows from there */
   .label {
     display: block;
     font-size: 12px;
@@ -1771,10 +1775,11 @@ function EveningCheckIn({ checkin, setField, tomorrowOneThing, setTomorrowOneThi
             >${n}</button>
           `)}
         </div>
-        <input
-          class="input"
+        <textarea
+          class="textarea-line"
+          rows="1"
           style="margin-top:8px"
-          placeholder="Why? (optional, one line)"
+          placeholder="Why? (optional)"
           value=${checkin.wellbeingWhy || ""}
           onInput=${e => setField("wellbeingWhy", e.target.value)}
         />
@@ -1782,8 +1787,9 @@ function EveningCheckIn({ checkin, setField, tomorrowOneThing, setTomorrowOneThi
 
       <div class="field">
         <label class="label">A moment of stillness</label>
-        <input
-          class="input"
+        <textarea
+          class="textarea-line"
+          rows="1"
           value=${checkin.stillness || ""}
           onInput=${e => setField("stillness", e.target.value)}
         />
@@ -1791,8 +1797,9 @@ function EveningCheckIn({ checkin, setField, tomorrowOneThing, setTomorrowOneThi
 
       <div class="field">
         <label class="label">A moment of visibility or connection</label>
-        <input
-          class="input"
+        <textarea
+          class="textarea-line"
+          rows="1"
           value=${checkin.visibility || ""}
           onInput=${e => setField("visibility", e.target.value)}
         />
@@ -1810,9 +1817,10 @@ function EveningCheckIn({ checkin, setField, tomorrowOneThing, setTomorrowOneThi
 
       <div class="field">
         <label class="label">Body notes</label>
-        <input
-          class="input"
-          placeholder="One line on how the body felt"
+        <textarea
+          class="textarea-line"
+          rows="1"
+          placeholder="How the body felt"
           value=${checkin.bodyNotes || ""}
           onInput=${e => setField("bodyNotes", e.target.value)}
         />
@@ -1829,9 +1837,10 @@ function EveningCheckIn({ checkin, setField, tomorrowOneThing, setTomorrowOneThi
             >${s}</button>
           `)}
         </div>
-        <input
-          class="input"
-          placeholder="One-line pulse check"
+        <textarea
+          class="textarea-line"
+          rows="1"
+          placeholder="Pulse check"
           value=${creative.pulse || ""}
           onInput=${e => setCreative("pulse", e.target.value)}
         />
@@ -1841,9 +1850,10 @@ function EveningCheckIn({ checkin, setField, tomorrowOneThing, setTomorrowOneThi
         <label class="label">Three things I'm grateful for</label>
         <div class="stack">
           ${[0, 1, 2].map(i => html`
-            <input
+            <textarea
               key=${i}
-              class="input"
+              class="textarea-line"
+              rows="1"
               placeholder=${`#${i + 1}`}
               value=${grat[i] || ""}
               onInput=${e => setGrat(i, e.target.value)}
@@ -1854,8 +1864,9 @@ function EveningCheckIn({ checkin, setField, tomorrowOneThing, setTomorrowOneThi
 
       <div class="field">
         <label class="label">${nextDayLabel}'s one thing that matters most</label>
-        <input
-          class="input"
+        <textarea
+          class="textarea-line"
+          rows="1"
           value=${tomorrowOneThing || ""}
           onInput=${e => setTomorrowOneThing(e.target.value)}
         />
