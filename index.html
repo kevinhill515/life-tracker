@@ -172,7 +172,11 @@
   .input:focus, .textarea:focus, .select:focus {
     border-color: var(--accent);
   }
-  .textarea { min-height: 70px; }
+  .textarea {
+    min-height: 70px;
+    resize: none;            /* auto-grow handles it */
+    overflow: hidden;        /* no scrollbars; grow to fit */
+  }
   .label {
     display: block;
     font-size: 12px;
@@ -1212,6 +1216,27 @@ function SignedInApp({ session, theme, toggleTheme }) {
   // Refs to avoid save loops & feedback from realtime
   const lastCloudJsonRef = useRef(null);
   const saveTimerRef = useRef(null);
+
+  // Auto-grow every textarea to fit its contents.
+  // Runs after every render so it covers: initial load, user typing,
+  // cloud sync from another device, modal mounts, tab switches.
+  useEffect(() => {
+    const grow = (el) => {
+      el.style.height = "auto";
+      el.style.height = el.scrollHeight + "px";
+    };
+    document.querySelectorAll("textarea").forEach(grow);
+  });
+  useEffect(() => {
+    const onResize = () => {
+      document.querySelectorAll("textarea").forEach((el) => {
+        el.style.height = "auto";
+        el.style.height = el.scrollHeight + "px";
+      });
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   // Initial cloud hydration: cloud is source of truth on load.
   // If cloud is empty but local has data, upload local.
