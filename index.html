@@ -779,25 +779,25 @@ alter publication supabase_realtime add table public.user_state;
 
 const HABITS = [
   "Yoga", "Strength", "Cardio", "Ruck", "Sauna", "Float",
-  "Rope Flow", "Ocean", "Reading", "Creating", "Spanish",
-  "Spiritual", "Friends", "Family"
+  "Ocean", "Reading", "Creating", "Spanish",
+  "Spiritual", "Relationship", "Friends", "Family"
 ];
 
 const HABIT_ICONS = {
-  "Yoga":      "🧘",
-  "Strength":  "💪",
-  "Cardio":    "🏃",
-  "Ruck":      "🎒",
-  "Sauna":     "🔥",
-  "Float":     "💧",
-  "Rope Flow": "🪢",
-  "Ocean":     "🌊",
-  "Reading":   "📖",
-  "Creating":  "🎨",
-  "Spanish":   "🗣",
-  "Spiritual": "✨",
-  "Friends":   "👥",
-  "Family":    "🏡"
+  "Yoga":         "🧘",
+  "Strength":     "💪",
+  "Cardio":       "🏃",
+  "Ruck":         "🎒",
+  "Sauna":        "🔥",
+  "Float":        "💧",
+  "Ocean":        "🌊",
+  "Reading":      "📖",
+  "Creating":     "🎨",
+  "Spanish":      "🗣",
+  "Spiritual":    "✨",
+  "Relationship": "💞",
+  "Friends":      "👥",
+  "Family":       "🏡"
 };
 
 const HABIT_RENAMES = {
@@ -1125,7 +1125,8 @@ function searchAll(state, query) {
       ["What happened",       c.whatHappened],
       ["Wellbeing reason",    c.wellbeingWhy],
       ["Stillness",           c.stillness],
-      ["Visibility",          c.visibility],
+      ["What gave me energy", c.energy],
+      ["Visibility",          c.visibility], // legacy
       ["Connection",          c.connection],
       ["Body notes",          c.bodyNotes],
       ["Creative pulse",      c.creative?.pulse],
@@ -1821,12 +1822,12 @@ function EveningCheckIn({ checkin, setField, tomorrowOneThing, setTomorrowOneThi
       </div>
 
       <div class="field">
-        <label class="label">A moment of visibility or connection</label>
+        <label class="label">What gave me energy today?</label>
         <textarea
           class="textarea-line"
           rows="1"
-          value=${checkin.visibility || ""}
-          onInput=${e => setField("visibility", e.target.value)}
+          value=${checkin.energy || ""}
+          onInput=${e => setField("energy", e.target.value)}
         />
       </div>
 
@@ -1852,7 +1853,7 @@ function EveningCheckIn({ checkin, setField, tomorrowOneThing, setTomorrowOneThi
       </div>
 
       <div class="field">
-        <label class="label">Creative project</label>
+        <label class="label">Creative projects</label>
         <div class="row" style="margin-bottom:8px">
           ${CREATIVE_STATES.map(s => html`
             <button
@@ -2796,7 +2797,8 @@ function buildRangeSummary(state, startDate, endDate) {
     if (c?.wellbeing) dailyLines.push(`- Wellbeing: ${c.wellbeing}/10${c.wellbeingWhy ? ` — ${c.wellbeingWhy}` : ""}`);
     if (c?.whatHappened) dailyLines.push(`- What happened: ${c.whatHappened}`);
     if (c?.stillness) dailyLines.push(`- Stillness: ${c.stillness}`);
-    if (c?.visibility) dailyLines.push(`- Visibility/connection: ${c.visibility}`);
+    if (c?.energy) dailyLines.push(`- What gave me energy: ${c.energy}`);
+    if (c?.visibility) dailyLines.push(`- Visibility/connection: ${c.visibility}`); // legacy
     if (c?.connection) dailyLines.push(`- Who I connected with: ${c.connection}`);
     if (c?.bodyNotes) dailyLines.push(`- Body: ${c.bodyNotes}`);
     if (c?.creative?.status) dailyLines.push(`- Creative: ${c.creative.status}${c.creative.pulse ? ` — ${c.creative.pulse}` : ""}`);
