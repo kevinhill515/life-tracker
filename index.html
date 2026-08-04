@@ -778,7 +778,7 @@ alter publication supabase_realtime add table public.user_state;
    ====================================================================== */
 
 const HABITS = [
-  "Yoga", "Strength", "Cardio", "Ruck", "Sauna", "Float",
+  "Yoga", "Strength", "Cardio", "Climbing", "Sauna", "Float",
   "Ocean", "Reading", "Creating", "Spanish",
   "Spiritual", "Relationship", "Friends", "Family"
 ];
@@ -787,7 +787,7 @@ const HABIT_ICONS = {
   "Yoga":         "🧘",
   "Strength":     "💪",
   "Cardio":       "🏃",
-  "Ruck":         "🎒",
+  "Climbing":     "🧗",
   "Sauna":        "🔥",
   "Float":        "💧",
   "Ocean":        "🌊",
@@ -802,7 +802,12 @@ const HABIT_ICONS = {
 
 const HABIT_RENAMES = {
   "Stretch/Mobility":  "Yoga",
-  "Spiritual Lessons": "Spiritual"
+  "Spiritual Lessons": "Spiritual",
+  // Ruck retired — merge any historical Ruck ticks into Cardio. The
+  // rename migration in migrateState does max-per-day merging when
+  // both keys exist, so a Ruck-marked Tuesday and a Cardio-marked
+  // Tuesday in the same week stay one Cardio tick (not double-count).
+  "Ruck":              "Cardio"
 };
 
 const THEME_KEY = "lt-theme-v1";
